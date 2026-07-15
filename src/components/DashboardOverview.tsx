@@ -30,7 +30,8 @@ import {
   Layers,
   AlertOctagon,
   BadgeCheck,
-  Building2
+  Building2,
+  BarChart3,
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -46,6 +47,7 @@ import {
 import { NPMFullPackageData, RepositoryRiskLevel, SearchResult } from '../types';
 import { resolvePublisherInfo, resolveRepositoryRisk } from '../packageDefaults';
 import DependencyTree from './DependencyTree';
+import PackageInsightsPanel from './PackageInsightsPanel';
 
 interface KpiStatCardProps {
   label: string;
@@ -254,7 +256,7 @@ export default function DashboardOverview({
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [showMovingAverage, setShowMovingAverage] = useState(false);
-  const [activeTabSection, setActiveTabSection] = useState<'overview' | 'dependencies' | 'versions' | 'security'>('overview');
+  const [activeTabSection, setActiveTabSection] = useState<'overview' | 'insights' | 'dependencies' | 'versions' | 'security'>('overview');
   const [expandedKpi, setExpandedKpi] = useState<string | null>(null);
 
   const searchRef = useRef<HTMLDivElement>(null);
@@ -717,6 +719,16 @@ export default function DashboardOverview({
           <Activity className="h-4 w-4" /> Downloads & Health Overview
         </button>
         <button
+          onClick={() => setActiveTabSection('insights')}
+          className={`pb-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
+            activeTabSection === 'insights'
+              ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+              : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
+          }`}
+        >
+          <BarChart3 className="h-4 w-4" /> Package Insights
+        </button>
+        <button
           onClick={() => setActiveTabSection('dependencies')}
           className={`pb-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
             activeTabSection === 'dependencies'
@@ -1030,7 +1042,12 @@ export default function DashboardOverview({
         </div>
       )}
 
-      {/* Tab B: Dependencies Grid */}
+      {/* Tab B: Package Insights */}
+      {activeTabSection === 'insights' && (
+        <PackageInsightsPanel pkgData={pkgData} />
+      )}
+
+      {/* Tab C: Dependencies Grid */}
       {activeTabSection === 'dependencies' && (
         <div className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-md">
           <DependencyTree

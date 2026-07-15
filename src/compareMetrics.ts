@@ -267,6 +267,48 @@ export const COMPARE_ROWS: CompareRow[] = [
   },
 ];
 
+export const METRIC_GROUPS: { title: string; ids: string[] }[] = [
+  {
+    title: 'Popularity',
+    ids: ['health-score', 'weekly-downloads', 'github-stars'],
+  },
+  {
+    title: 'Size',
+    ids: ['bundle-size', 'package-size', 'install-size'],
+  },
+  {
+    title: 'Activity',
+    ids: ['package-age', 'repository-activity', 'last-publish', 'contributors', 'release-frequency'],
+  },
+  {
+    title: 'Quality',
+    ids: ['dependency-count', 'license', 'security-score', 'maintenance-score', 'repository-risk', 'bus-factor'],
+  },
+  {
+    title: 'Module format',
+    ids: ['tree-shaking', 'side-effects', 'esm', 'cjs'],
+  },
+  {
+    title: 'Other',
+    ids: ['funding', 'typescript'],
+  },
+];
+
+const COMPARE_ROW_MAP = new Map(COMPARE_ROWS.map((row) => [row.id, row]));
+
+export function getCompareRow(id: string): CompareRow | undefined {
+  return COMPARE_ROW_MAP.get(id);
+}
+
+export function getMetricGroups() {
+  return METRIC_GROUPS.map((group) => ({
+    title: group.title,
+    rows: group.ids
+      .map((id) => getCompareRow(id))
+      .filter((row): row is CompareRow => !!row),
+  }));
+}
+
 export function getRowHighlights(
   packages: NPMFullPackageData[],
   row: CompareRow,
