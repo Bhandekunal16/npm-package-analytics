@@ -273,7 +273,7 @@ export default function Header({
   );
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-zinc-200 dark:border-zinc-800/80 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-md">
+    <header className="sticky top-0 z-40 w-full overflow-x-hidden border-b border-zinc-200 dark:border-zinc-800/80 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Mobile: title + actions on row 1, tabs on row 2 */}

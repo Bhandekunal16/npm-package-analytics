@@ -369,7 +369,7 @@ export default function DashboardOverview({
   const isFavorite = favorites.includes(pkgData.name);
 
   return (
-    <div className="space-y-8 py-4">
+    <div className="space-y-8 py-4 w-full min-w-0 overflow-x-hidden">
       
       {/* 1. Header & Search controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -429,7 +429,7 @@ export default function DashboardOverview({
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5 min-w-0">
           <button
             onClick={() => onToggleFavorite(pkgData.name)}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-full border text-xs font-semibold shadow-sm transition-all ${
@@ -456,7 +456,7 @@ export default function DashboardOverview({
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-3xl font-sans font-extrabold text-zinc-950 dark:text-white tracking-tight">{pkgData.name}</h1>
+              <h1 className="text-3xl font-sans font-extrabold text-zinc-950 dark:text-white tracking-tight break-words min-w-0">{pkgData.name}</h1>
               <span className="px-2.5 py-0.5 text-xs font-mono font-bold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-900/40">
                 v{pkgData.latestVersion}
               </span>
@@ -524,7 +524,7 @@ export default function DashboardOverview({
       </div>
 
       {/* 3. Global Ecosystem KPI Tiles Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3 sm:gap-4 items-stretch">
+      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3 sm:gap-4 items-stretch w-full min-w-0">
         <KpiStatCard
           label="Downloads Today"
           value={pkgData.downloads.today.toLocaleString()}
@@ -597,10 +597,11 @@ export default function DashboardOverview({
       </div>
 
       {/* 4. Sub-Section Navigation Tabs */}
-      <div className="flex border-b border-zinc-200 dark:border-zinc-800 gap-6">
+      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="flex border-b border-zinc-200 dark:border-zinc-800 gap-4 sm:gap-6 w-max sm:w-full min-w-full">
         <button
           onClick={() => setActiveTabSection('overview')}
-          className={`pb-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 ${
+          className={`pb-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
             activeTabSection === 'overview'
               ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
               : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
@@ -610,7 +611,7 @@ export default function DashboardOverview({
         </button>
         <button
           onClick={() => setActiveTabSection('dependencies')}
-          className={`pb-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 ${
+          className={`pb-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
             activeTabSection === 'dependencies'
               ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
               : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
@@ -620,7 +621,7 @@ export default function DashboardOverview({
         </button>
         <button
           onClick={() => setActiveTabSection('versions')}
-          className={`pb-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 ${
+          className={`pb-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
             activeTabSection === 'versions'
               ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
               : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
@@ -630,7 +631,7 @@ export default function DashboardOverview({
         </button>
         <button
           onClick={() => setActiveTabSection('security')}
-          className={`pb-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 ${
+          className={`pb-3 text-sm font-semibold border-b-2 transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
             activeTabSection === 'security'
               ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
               : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
@@ -638,6 +639,7 @@ export default function DashboardOverview({
         >
           <ShieldAlert className="h-4 w-4" /> Publisher & Advisory Info
         </button>
+        </div>
       </div>
 
       {/* 5. Tab Views */}
@@ -712,7 +714,7 @@ export default function DashboardOverview({
 
             {/* Custom Date selection sliders (Only visible if 'custom' range is active) */}
             {timeRange === 'custom' && (
-              <div className="flex items-center gap-2 mb-4 bg-zinc-50 dark:bg-zinc-900 p-2.5 rounded-lg border border-zinc-200/50 dark:border-zinc-800 text-xs text-zinc-500">
+              <div className="flex flex-wrap items-center gap-2 mb-4 bg-zinc-50 dark:bg-zinc-900 p-2.5 rounded-lg border border-zinc-200/50 dark:border-zinc-800 text-xs text-zinc-500">
                 <span>Start Date:</span>
                 <input
                   type="date"
@@ -731,7 +733,7 @@ export default function DashboardOverview({
             )}
 
             {/* Area Chart visualization */}
-            <div className="h-72 w-full mt-4">
+            <div className="h-72 w-full min-w-0 overflow-hidden mt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={formattedChartData}>
                   <defs>

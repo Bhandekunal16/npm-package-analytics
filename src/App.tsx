@@ -133,7 +133,7 @@ export default function App() {
   }, []);
 
   return (
-    <div className="min-h-screen transition-colors duration-200 bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 font-sans">
+    <div className="min-h-screen overflow-x-hidden transition-colors duration-200 bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 font-sans">
         
         {/* Navigation Navbar */}
         <Header
@@ -150,7 +150,7 @@ export default function App() {
         />
 
         {/* Core Workspace Frame */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full min-w-0 overflow-x-hidden">
           
           {activeTab === 'dashboard' && (
             <DashboardOverview
@@ -177,9 +177,9 @@ export default function App() {
         </main>
 
         {/* Global layout subtle backdrop footer credits */}
-        <footer className="border-t border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/40 py-5 text-center text-[11px] text-zinc-500 dark:text-zinc-500 font-mono mt-16 backdrop-blur-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex gap-4 items-center">
+        <footer className="border-t border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/40 py-5 text-center text-[11px] text-zinc-500 dark:text-zinc-500 font-mono mt-16 backdrop-blur-sm overflow-x-hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 min-w-0">
+            <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 items-center">
               <span>Status: <span className="text-emerald-500 font-semibold">● Operational</span></span>
               <span className="text-zinc-400 dark:text-zinc-600">|</span>
               <span>API Latency: 42ms</span>
