@@ -15,6 +15,8 @@ import {
   Palette,
   Monitor,
   Check,
+  Bell,
+  BellOff,
 } from 'lucide-react';
 import {
   COLOR_THEMES,
@@ -146,6 +148,8 @@ interface HeaderProps {
   setActiveTab: (tab: 'dashboard' | 'compare' | 'rankings') => void;
   favorites: string[];
   recentViewed: string[];
+  alertsEnabled: boolean;
+  onToggleAlerts: (enabled: boolean) => void;
   onSelectPackage: (name: string) => void;
   onRemoveFavorite: (name: string) => void;
 }
@@ -159,6 +163,8 @@ export default function Header({
   setActiveTab,
   favorites,
   recentViewed,
+  alertsEnabled,
+  onToggleAlerts,
   onSelectPackage,
   onRemoveFavorite,
 }: HeaderProps) {
@@ -299,6 +305,26 @@ export default function Header({
             </div>
           ))
         )}
+
+        <div className="p-2 border-t border-zinc-100 dark:border-zinc-800">
+          <button
+            onClick={() => onToggleAlerts(!alertsEnabled)}
+            className={`w-full flex items-center justify-between gap-2 p-2.5 rounded-lg text-xs font-semibold transition-all ${
+              alertsEnabled
+                ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400'
+                : 'bg-zinc-50 dark:bg-zinc-900/50 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+            }`}
+          >
+            <span className="flex items-center gap-1.5">
+              {alertsEnabled ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
+              Watchlist alerts
+            </span>
+            <span className="text-[10px] uppercase">{alertsEnabled ? 'On' : 'Off'}</span>
+          </button>
+          <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1.5 px-1 leading-relaxed">
+            Browser notifications when bookmarked packages are deprecated, get CVEs, or go stale.
+          </p>
+        </div>
 
         {recentViewed.length > 0 && (
           <>

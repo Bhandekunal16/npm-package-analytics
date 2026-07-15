@@ -18,8 +18,13 @@ export interface CompareRow {
 }
 
 export function resolveComparisonMetrics(pkg: NPMFullPackageData): PackageComparisonMetrics {
+  const bundleFromPhobia = pkg.bundleSize?.minifiedBytes ?? null;
+
   if (pkg.comparisonMetrics) {
-    return pkg.comparisonMetrics;
+    return {
+      ...pkg.comparisonMetrics,
+      bundleSizeBytes: pkg.comparisonMetrics.bundleSizeBytes ?? bundleFromPhobia,
+    };
   }
 
   const dependencyCount = Object.keys(pkg.dependencies || {}).length;
@@ -31,7 +36,7 @@ export function resolveComparisonMetrics(pkg: NPMFullPackageData): PackageCompar
     : null;
 
   return {
-    bundleSizeBytes: null,
+    bundleSizeBytes: bundleFromPhobia,
     packageSizeBytes: null,
     installSizeBytes: null,
     packageAgeDays: publishDays,
@@ -116,10 +121,26 @@ export const COMPARE_ROWS: CompareRow[] = [
   },
   {
     id: 'bundle-size',
-    label: 'Bundle Size',
+    label: 'Bundle Size (min)',
     direction: 'lower-better',
-    getNumericValue: (_pkg, metrics) => metrics.bundleSizeBytes,
-    format: (_pkg, metrics) => formatBytes(metrics.bundleSizeBytes),
+    getNumericValue: (pkg, metrics) => pkg.bundleSize?.minifiedBytes ?? metrics.bundleSizeBytes,
+    format: (pkg, metrics) => {
+      const bytes = pkg.bundleSize?.minifiedBytes ?? metrics.bundleSizeBytes;
+      const source = pkg.bundleSize?.source === 'bundlephobia' ? ' · Bundlephobia' : '';
+      return bytes !== null ? `${formatBytes(bytes)}${source}` : 'N/A';
+    },
+  },
+  {
+    id: 'gzip-size',
+    label: 'Gzip Size',
+    direction: 'lower-better',
+    getNumericValue: (pkg) => pkg.bundleSize?.gzipBytes ?? null,
+    format: (pkg) => {
+      const bytes = pkg.bundleSize?.gzipBytes;
+      if (bytes === null || bytes === undefined) return 'N/A';
+      const source = pkg.bundleSize?.source === 'bundlephobia' ? ' · Bundlephobia' : '';
+      return `${formatBytes(bytes)}${source}`;
+    },
   },
   {
     id: 'package-size',
@@ -274,7 +295,7 @@ export const METRIC_GROUPS: { title: string; ids: string[] }[] = [
   },
   {
     title: 'Size',
-    ids: ['bundle-size', 'package-size', 'install-size'],
+    ids: ['bundle-size', 'gzip-size', 'package-size', 'install-size'],
   },
   {
     title: 'Activity',

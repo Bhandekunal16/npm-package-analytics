@@ -45,9 +45,13 @@ import {
   ResponsiveContainer 
 } from 'recharts';
 import { NPMFullPackageData, RepositoryRiskLevel, SearchResult } from '../types';
-import { resolvePublisherInfo, resolveRepositoryRisk } from '../packageDefaults';
+import { resolvePublisherInfo, resolveRepositoryRisk, resolveDependencyAudit, resolveAlternatives, resolveSecurity } from '../packageDefaults';
+import { updateWatchSnapshot } from '../watchlistAlerts';
 import DependencyTree from './DependencyTree';
 import PackageInsightsPanel from './PackageInsightsPanel';
+import SecurityDeepDive from './SecurityDeepDive';
+import TransitiveDependencyTree from './TransitiveDependencyTree';
+import AlternativesPanel from './AlternativesPanel';
 
 interface KpiStatCardProps {
   label: string;
@@ -278,6 +282,7 @@ export default function DashboardOverview({
         const data = await res.json();
         setPkgData(data);
         setSearchQuery(data.name);
+        updateWatchSnapshot(data);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -382,6 +387,9 @@ export default function DashboardOverview({
 
   const publisherInfo = resolvePublisherInfo(pkgData);
   const repositoryRisk = resolveRepositoryRisk(pkgData);
+  const dependencyAudit = resolveDependencyAudit(pkgData);
+  const security = resolveSecurity(pkgData);
+  const alternatives = resolveAlternatives(pkgData);
 
   // Filter downloads data based on range
   const getFilteredChartData = () => {
@@ -736,7 +744,7 @@ export default function DashboardOverview({
               : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
           }`}
         >
-          <Layers className="h-4 w-4" /> Dependency Graph ({Object.keys(pkgData.dependencies).length})
+          <Layers className="h-4 w-4" /> Dependencies ({dependencyAudit.totalPackages || Object.keys(pkgData.dependencies).length})
         </button>
         <button
           onClick={() => setActiveTabSection('versions')}
@@ -1049,15 +1057,26 @@ export default function DashboardOverview({
 
       {/* Tab C: Dependencies Grid */}
       {activeTabSection === 'dependencies' && (
-        <div className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-md">
-          <DependencyTree
-            packageName={pkgData.name}
-            dependencies={pkgData.dependencies}
-            devDependencies={pkgData.devDependencies}
-            peerDependencies={pkgData.peerDependencies}
-            optionalDependencies={pkgData.optionalDependencies}
-            onSelectPackage={onSelectPackage}
-          />
+        <div className="space-y-6">
+          <div className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-md">
+            <DependencyTree
+              packageName={pkgData.name}
+              dependencies={pkgData.dependencies}
+              devDependencies={pkgData.devDependencies}
+              peerDependencies={pkgData.peerDependencies}
+              optionalDependencies={pkgData.optionalDependencies}
+              onSelectPackage={onSelectPackage}
+            />
+          </div>
+
+          {dependencyAudit.tree.length > 0 && (
+            <div className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-md">
+              <h3 className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2 mb-4">
+                <GitFork className="h-4.5 w-4.5 text-indigo-500" /> Transitive Dependency Audit
+              </h3>
+              <TransitiveDependencyTree audit={dependencyAudit} onSelectPackage={onSelectPackage} />
+            </div>
+          )}
         </div>
       )}
 
@@ -1283,6 +1302,20 @@ export default function DashboardOverview({
             </div>
           </div>
 
+          <SecurityDeepDive pkgData={pkgData} />
+
+          {(alternatives.length > 0 || security.hasSecurityAdvisories || pkgData.security.isDeprecated) && (
+            <div className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 backdrop-blur-md shadow-md space-y-4">
+              <h3 className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2 border-b border-zinc-100 dark:border-zinc-900 pb-4">
+                <TrendingUp className="h-4.5 w-4.5 text-indigo-500" /> Alternative Packages
+              </h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Suggested similar, lighter, or safer alternatives based on risk profile and ecosystem data.
+              </p>
+              <AlternativesPanel alternatives={alternatives} onSelectPackage={onSelectPackage} />
+            </div>
+          )}
+
         <div>
           {/* Advisory details */}
           <div className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 backdrop-blur-md shadow-md space-y-6">
@@ -1298,14 +1331,26 @@ export default function DashboardOverview({
                 <p className="text-rose-600 dark:text-rose-500 leading-relaxed font-semibold">
                   {pkgData.security.deprecationReason || "This package is no longer supported by its maintainer and should not be used in critical software."}
                 </p>
-                <div className="mt-3 flex items-center gap-1.5 text-zinc-500">
-                  <span>Suggested alternatives:</span>
-                  <span className="font-mono font-bold text-zinc-900 dark:text-white">check package ecosystem standards</span>
+              </div>
+            ) : security.hasSecurityAdvisories ? (
+              <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 text-xs">
+                <div className="flex gap-2 text-rose-800 dark:text-rose-400 font-semibold mb-1">
+                  <AlertTriangle className="h-4 w-4 shrink-0" /> SECURITY ADVISORIES FOUND
                 </div>
+                <p className="text-rose-600 dark:text-rose-500 leading-relaxed font-semibold">
+                  {security.advisoriesCount} known {security.advisoriesCount === 1 ? 'advisory' : 'advisories'}
+                  {security.highestSeverity ? ` — highest severity: ${security.highestSeverity}` : ''}.
+                  {dependencyAudit.totalVulnerabilities > 0
+                    ? ` ${dependencyAudit.totalVulnerabilities} vulnerable dependencies in the install tree.`
+                    : ''}
+                </p>
               </div>
             ) : (
               <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-800 dark:text-emerald-400 flex gap-2 font-medium">
-                <CheckCircle className="h-4 w-4 shrink-0" /> Good Integrity. This package is not deprecated. No security advisories active on latest tags.
+                <CheckCircle className="h-4 w-4 shrink-0" /> Good integrity. Not deprecated
+                {dependencyAudit.totalVulnerabilities > 0
+                  ? `, but ${dependencyAudit.totalVulnerabilities} vulnerable dependencies found in the tree.`
+                  : ' and no OSV advisories on the latest version.'}
               </div>
             )}
 

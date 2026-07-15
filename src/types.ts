@@ -22,12 +22,67 @@ export interface PackageVersion {
   type: 'latest' | 'previous' | 'beta' | 'alpha' | 'rc' | 'other';
 }
 
+export interface SecurityAdvisory {
+  id: string;
+  summary: string;
+  severity: 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL' | 'UNKNOWN';
+  affectedVersions: string[];
+  published?: string;
+}
+
+export interface DependencyVulnerability {
+  packageName: string;
+  version: string;
+  severity: string;
+  id: string;
+  summary: string;
+  path: string[];
+  isDirect: boolean;
+}
+
+export interface DependencyTreeNode {
+  name: string;
+  version: string;
+  depth: number;
+  type: 'prod' | 'dev' | 'peer' | 'optional';
+  vulnerable: boolean;
+  children: DependencyTreeNode[];
+}
+
+export interface DependencyAudit {
+  totalPackages: number;
+  maxDepth: number;
+  duplicateCount: number;
+  duplicatePackages: { name: string; count: number }[];
+  directVulnerable: number;
+  transitiveVulnerable: number;
+  totalVulnerabilities: number;
+  vulnerabilities: DependencyVulnerability[];
+  tree: DependencyTreeNode[];
+}
+
+export interface BundleSizeInfo {
+  minifiedBytes: number | null;
+  gzipBytes: number | null;
+  dependencyCount: number | null;
+  source: 'bundlephobia' | 'registry';
+}
+
+export interface PackageAlternative {
+  name: string;
+  description: string;
+  reason: 'similar' | 'lighter' | 'safer' | 'morePopular';
+  weeklyDownloads?: number;
+}
+
 export interface SecurityStatus {
   isDeprecated: boolean;
   deprecationReason?: string;
   maintenanceStatus: 'active' | 'inactive' | 'deprecated';
   hasSecurityAdvisories: boolean;
   advisoriesCount: number;
+  advisories: SecurityAdvisory[];
+  highestSeverity?: string;
 }
 
 export type RepositoryRiskLevel = 'Low' | 'Medium' | 'High';
@@ -160,6 +215,9 @@ export interface NPMFullPackageData {
   repositoryRisk: RepositoryRisk;
   publisherInfo: PublisherInformation;
   comparisonMetrics: PackageComparisonMetrics;
+  bundleSize: BundleSizeInfo;
+  dependencyAudit: DependencyAudit;
+  alternatives: PackageAlternative[];
 }
 
 export interface RankingItem {

@@ -4,6 +4,7 @@
  */
 
 import express from "express";
+import { fetchSecurityAnalytics } from "./securityAnalytics";
 
 class MemoryCache {
   private cache = new Map<string, { data: any; expiry: number }>();
@@ -549,6 +550,32 @@ function buildComparisonMetrics(input: {
   };
 }
 
+function emptyDependencyAudit() {
+  return {
+    totalPackages: 0,
+    maxDepth: 0,
+    duplicateCount: 0,
+    duplicatePackages: [],
+    directVulnerable: 0,
+    transitiveVulnerable: 0,
+    totalVulnerabilities: 0,
+    vulnerabilities: [],
+    tree: [],
+  };
+}
+
+function buildSecurityFallback(payload: any) {
+  return {
+    isDeprecated: payload.security?.isDeprecated ?? false,
+    deprecationReason: payload.security?.deprecationReason,
+    maintenanceStatus: payload.security?.maintenanceStatus ?? "inactive",
+    hasSecurityAdvisories: payload.security?.hasSecurityAdvisories ?? false,
+    advisoriesCount: payload.security?.advisoriesCount ?? 0,
+    advisories: payload.security?.advisories ?? [],
+    highestSeverity: payload.security?.highestSeverity,
+  };
+}
+
 function buildComparisonMetricsFallback(payload: any) {
   const dependencyCount = Object.keys(payload.dependencies || {}).length;
   const releaseDaysAgo = payload.lastUpdated
@@ -608,12 +635,27 @@ function enrichPackageResponse(payload: any, packageName: string) {
   if (!payload.comparisonMetrics) {
     payload.comparisonMetrics = buildComparisonMetricsFallback(payload);
   }
+  if (!payload.bundleSize) {
+    payload.bundleSize = {
+      minifiedBytes: payload.comparisonMetrics?.bundleSizeBytes ?? null,
+      gzipBytes: null,
+      dependencyCount: null,
+      source: "registry",
+    };
+  }
+  if (!payload.dependencyAudit) {
+    payload.dependencyAudit = emptyDependencyAudit();
+  }
+  if (!payload.alternatives) {
+    payload.alternatives = [];
+  }
+  payload.security = buildSecurityFallback(payload);
   return payload;
 }
 
 export async function getPackageAnalytics(packageName: string): Promise<any> {
   const decodedName = decodeURIComponent(packageName);
-  const cacheKey = `package:v3:${decodedName}`;
+  const cacheKey = `package:v4:${decodedName}`;
   const cached = cache.get(cacheKey);
   if (cached) {
     return enrichPackageResponse({ ...cached }, decodedName);
@@ -793,7 +835,6 @@ export async function getPackageAnalytics(packageName: string): Promise<any> {
 
     const deprecationReason = latestVersionData.deprecated || registry.versions?.[Object.keys(registry.versions || {}).pop() || ""]?.deprecated;
     const isDeprecated = !!deprecationReason;
-    const hasSecurityAdvisories = false;
 
     const hasTSDeclarations =
       !!latestVersionData.types ||
@@ -812,19 +853,52 @@ export async function getPackageAnalytics(packageName: string): Promise<any> {
     const dScore = downloads.lastWeek > 1000000 ? 25 : downloads.lastWeek > 100000 ? 22 : downloads.lastWeek > 10000 ? 18 : downloads.lastWeek > 1000 ? 12 : downloads.lastWeek > 100 ? 8 : 4;
     const tsScore = hasTSDeclarations ? 15 : 0;
     const cScore = github ? (github.stars > 10000 ? 20 : github.stars > 1000 ? 17 : github.stars > 100 ? 12 : 8) : 8;
-    const sScore = isDeprecated ? 0 : 15;
-
-    const healthScore = Math.max(0, Math.min(100, mScore + dScore + tsScore + cScore + sScore));
 
     const maintainers = registry.maintainers || [];
-    const publisherInfo = await fetchPublisherInformation(
-      decodedName,
-      registry,
-      latestVersionData,
-      maintainers,
-      timeData,
-      latestVersionString,
-    );
+    const [publisherInfo, securityAnalytics] = await Promise.all([
+      fetchPublisherInformation(
+        decodedName,
+        registry,
+        latestVersionData,
+        maintainers,
+        timeData,
+        latestVersionString,
+      ),
+      fetchSecurityAnalytics({
+        packageName: decodedName,
+        version: latestVersionString,
+        keywords: registry.keywords || [],
+        dependencies: latestVersionData.dependencies || {},
+        devDependencies: latestVersionData.devDependencies || {},
+        peerDependencies: latestVersionData.peerDependencies || {},
+        optionalDependencies: latestVersionData.optionalDependencies || {},
+        downloads: { lastWeek: downloads.lastWeek, growthPercent: downloads.growthPercent },
+        repositoryRiskLevel: repositoryRisk?.level || "Medium",
+        unpackedSize: latestVersionData.dist?.unpackedSize ?? null,
+        fetchFn: (url, options) => fetchWithRetry(url, options),
+      }),
+    ]);
+
+    const advisories = securityAnalytics.advisories;
+    const hasSecurityAdvisories = advisories.length > 0;
+    const depAudit = securityAnalytics.dependencyAudit;
+    const severityRank = ["CRITICAL", "HIGH", "MODERATE", "LOW", "UNKNOWN"];
+    const highestSeverity = advisories
+      .map((a: any) => a.severity)
+      .sort((a: string, b: string) => severityRank.indexOf(a) - severityRank.indexOf(b))[0];
+
+    let sScore = 15;
+    if (isDeprecated) {
+      sScore = 0;
+    } else if (advisories.some((a: any) => a.severity === "CRITICAL" || a.severity === "HIGH")) {
+      sScore = 3;
+    } else if (hasSecurityAdvisories) {
+      sScore = 8;
+    } else if (depAudit.totalVulnerabilities > 0) {
+      sScore = 10;
+    }
+
+    const healthScore = Math.max(0, Math.min(100, mScore + dScore + tsScore + cScore + sScore));
 
     const comparisonMetrics = buildComparisonMetrics({
       registry,
@@ -843,6 +917,23 @@ export async function getPackageAnalytics(packageName: string): Promise<any> {
       timeData,
       latestVersionString,
     });
+
+    if (securityAnalytics.bundleSize.minifiedBytes !== null) {
+      comparisonMetrics.bundleSizeBytes = securityAnalytics.bundleSize.minifiedBytes;
+      comparisonMetrics.packageSizeBytes = securityAnalytics.bundleSize.minifiedBytes;
+    }
+    if (securityAnalytics.bundleSize.gzipBytes !== null && depAudit.totalPackages > 0) {
+      comparisonMetrics.installSizeBytes =
+        securityAnalytics.bundleSize.gzipBytes + depAudit.totalPackages * 45000;
+    }
+
+    const securityValue = isDeprecated
+      ? "Deprecated package"
+      : hasSecurityAdvisories
+        ? `${advisories.length} advisory${advisories.length === 1 ? "" : "ies"} (${highestSeverity || "UNKNOWN"})`
+        : depAudit.totalVulnerabilities > 0
+          ? `${depAudit.totalVulnerabilities} vulnerable dependencies`
+          : "No known security advisories";
 
     const responsePayload = {
       name: registry.name || decodedName,
@@ -871,7 +962,7 @@ export async function getPackageAnalytics(packageName: string): Promise<any> {
           popularity: { score: dScore, label: "Weekly Downloads", value: downloads.lastWeek.toLocaleString() },
           typescript: { score: tsScore, label: "TypeScript Ready", value: hasTSDeclarations },
           community: { score: cScore, label: "GitHub Stars", value: github ? github.stars.toLocaleString() : "No GitHub connected" },
-          security: { score: sScore, label: "Security Status", value: isDeprecated ? "Deprecated package" : "No known security advisories" },
+          security: { score: sScore, label: "Security Status", value: securityValue },
         },
       },
       security: {
@@ -879,11 +970,16 @@ export async function getPackageAnalytics(packageName: string): Promise<any> {
         deprecationReason,
         maintenanceStatus: isDeprecated ? "deprecated" : releaseDaysAgo < 180 ? "active" : "inactive",
         hasSecurityAdvisories,
-        advisoriesCount: 0,
+        advisoriesCount: advisories.length,
+        advisories,
+        highestSeverity,
       },
       repositoryRisk,
       publisherInfo,
       comparisonMetrics,
+      bundleSize: securityAnalytics.bundleSize,
+      dependencyAudit: depAudit,
+      alternatives: securityAnalytics.alternatives,
     };
 
     cache.set(cacheKey, responsePayload, 60 * 60 * 1000);

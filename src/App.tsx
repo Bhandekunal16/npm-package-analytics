@@ -16,6 +16,12 @@ import {
   type ColorTheme,
   type ThemeMode,
 } from './theme';
+import {
+  areAlertsEnabled,
+  checkWatchlistAlerts,
+  requestNotificationPermission,
+  setAlertsEnabled,
+} from './watchlistAlerts';
 
 export default function App() {
   const [themeMode, setThemeMode] = useState<ThemeMode>(readStoredThemeMode);
@@ -25,6 +31,7 @@ export default function App() {
 
   const [favorites, setFavorites] = useState<string[]>([]);
   const [recentViewed, setRecentViewed] = useState<string[]>([]);
+  const [alertsEnabled, setAlertsEnabledState] = useState(areAlertsEnabled);
 
   // 1. Initial configuration, parsing URL query parameters, and restoring localStorage
   useEffect(() => {
@@ -63,6 +70,15 @@ export default function App() {
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, [themeMode, colorTheme]);
 
+  const handleToggleAlerts = async (enabled: boolean) => {
+    if (enabled) {
+      const granted = await requestNotificationPermission();
+      if (!granted) return;
+    }
+    setAlertsEnabled(enabled);
+    setAlertsEnabledState(enabled);
+  };
+
   // 2. Track recently viewed additions
   const handleSelectPackage = (name: string) => {
     const cleanName = name.trim();
@@ -82,6 +98,18 @@ export default function App() {
     url.searchParams.set('package', cleanName);
     window.history.pushState({}, '', url.toString());
   };
+
+  useEffect(() => {
+    if (!alertsEnabled || favorites.length === 0) return;
+
+    const runCheck = () => {
+      checkWatchlistAlerts(favorites).catch(() => {});
+    };
+
+    runCheck();
+    const intervalId = window.setInterval(runCheck, 30 * 60 * 1000);
+    return () => window.clearInterval(intervalId);
+  }, [alertsEnabled, favorites]);
 
   // 3. Toggle Bookmark Favorite status
   const handleToggleFavorite = (name: string) => {
@@ -145,6 +173,8 @@ export default function App() {
           setActiveTab={setActiveTab}
           favorites={favorites}
           recentViewed={recentViewed}
+          alertsEnabled={alertsEnabled}
+          onToggleAlerts={handleToggleAlerts}
           onSelectPackage={handleSelectPackage}
           onRemoveFavorite={handleRemoveFavorite}
         />
