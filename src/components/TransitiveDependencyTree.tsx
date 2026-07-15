@@ -25,7 +25,7 @@ function TreeNode({
 }: {
   node: DependencyTreeNode;
   onSelectPackage: (name: string) => void;
-}) {
+}): React.ReactElement {
   const [open, setOpen] = useState(node.depth <= 1);
   const hasChildren = node.children.length > 0;
 
@@ -50,7 +50,9 @@ function TreeNode({
       </div>
       {open &&
         node.children.map((child) => (
-          <TreeNode key={`${child.name}-${child.depth}`} node={child} onSelectPackage={onSelectPackage} />
+          <div key={`${child.name}-${child.depth}`}>
+            <TreeNode node={child} onSelectPackage={onSelectPackage} />
+          </div>
         ))}
     </div>
   );
@@ -115,7 +117,9 @@ export default function TransitiveDependencyTree({ audit, onSelectPackage }: Tra
           <p className="text-xs text-zinc-400">No dependency tree available.</p>
         ) : (
           audit.tree.map((node) => (
-            <TreeNode key={`${node.name}-${node.type}`} node={node} onSelectPackage={onSelectPackage} />
+            <div key={`${node.name}-${node.type}`}>
+              <TreeNode node={node} onSelectPackage={onSelectPackage} />
+            </div>
           ))
         )}
       </div>
