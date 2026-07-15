@@ -107,14 +107,6 @@
   background: rgba(255, 255, 255, 0.25);
 }
 
-.light ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.12);
-}
-
-.light ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.25);
-}
-
 html:not(.dark) ::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.12);
 }
