@@ -5,22 +5,28 @@
 
 import React, { useState } from 'react';
 import { 
-  Compass, 
-  Layers, 
   Moon, 
   Sun, 
   Star, 
   History, 
   Command, 
   X, 
-  ShieldAlert, 
-  Award,
-  BookOpen
+  Palette,
+  Monitor,
+  Check,
 } from 'lucide-react';
+import {
+  COLOR_THEMES,
+  THEME_MODES,
+  type ColorTheme,
+  type ThemeMode,
+} from '../theme';
 
 interface HeaderProps {
-  darkMode: boolean;
-  setDarkMode: (dark: boolean) => void;
+  themeMode: ThemeMode;
+  setThemeMode: (mode: ThemeMode) => void;
+  colorTheme: ColorTheme;
+  setColorTheme: (theme: ColorTheme) => void;
   activeTab: 'dashboard' | 'compare' | 'rankings';
   setActiveTab: (tab: 'dashboard' | 'compare' | 'rankings') => void;
   favorites: string[];
@@ -30,8 +36,10 @@ interface HeaderProps {
 }
 
 export default function Header({
-  darkMode,
-  setDarkMode,
+  themeMode,
+  setThemeMode,
+  colorTheme,
+  setColorTheme,
   activeTab,
   setActiveTab,
   favorites,
@@ -41,6 +49,7 @@ export default function Header({
 }: HeaderProps) {
   const [showFavs, setShowFavs] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showThemeMenu, setShowThemeMenu] = useState(false);
 
   const tabs = [
     { id: 'dashboard' as const, label: 'Dashboard' },
@@ -67,6 +76,7 @@ export default function Header({
               onClick={() => {
                 setShowFavs(!showFavs);
                 setShowShortcuts(false);
+                setShowThemeMenu(false);
               }}
               className="p-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all relative"
               title="Bookmarks & Favorites"
@@ -148,6 +158,7 @@ export default function Header({
             onClick={() => {
               setShowShortcuts(!showShortcuts);
               setShowFavs(false);
+              setShowThemeMenu(false);
             }}
             className="p-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all hidden md:block"
             title="Keyboard Shortcuts"
@@ -156,13 +167,89 @@ export default function Header({
           </button>
 
           {/* Theme Selector */}
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className="p-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all"
-            title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          >
-            {darkMode ? <Sun className="h-5 w-5 text-amber-400" /> : <Moon className="h-5 w-5 text-indigo-600" />}
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => {
+                setShowThemeMenu(!showThemeMenu);
+                setShowFavs(false);
+                setShowShortcuts(false);
+              }}
+              className="p-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all"
+              title="Theme settings"
+            >
+              <Palette className="h-5 w-5 text-indigo-500" />
+            </button>
+
+            {showThemeMenu && (
+              <div className="absolute right-0 mt-2 w-64 rounded-xl shadow-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 overflow-hidden z-50">
+                <div className="p-3 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Palette className="h-3.5 w-3.5 text-indigo-500" /> Themes
+                  </span>
+                  <button
+                    onClick={() => setShowThemeMenu(false)}
+                    className="text-zinc-400 hover:text-zinc-600 dark:hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="p-3 space-y-4">
+                  <div>
+                    <p className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-2">
+                      Appearance
+                    </p>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {THEME_MODES.map((mode) => (
+                        <button
+                          key={mode.id}
+                          onClick={() => setThemeMode(mode.id)}
+                          className={`flex flex-col items-center gap-1 px-2 py-2 rounded-lg text-[11px] font-medium transition-all ${
+                            themeMode === mode.id
+                              ? 'bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 ring-1 ring-indigo-500/40'
+                              : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                          }`}
+                        >
+                          {mode.id === 'light' && <Sun className="h-4 w-4" />}
+                          {mode.id === 'dark' && <Moon className="h-4 w-4" />}
+                          {mode.id === 'system' && <Monitor className="h-4 w-4" />}
+                          {mode.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-2">
+                      Accent Color
+                    </p>
+                    <div className="space-y-1">
+                      {COLOR_THEMES.map((theme) => (
+                        <button
+                          key={theme.id}
+                          onClick={() => setColorTheme(theme.id)}
+                          className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-sm transition-all ${
+                            colorTheme === theme.id
+                              ? 'bg-indigo-600/10 text-indigo-600 dark:text-indigo-400'
+                              : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                          }`}
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <span
+                              className="h-3.5 w-3.5 rounded-full ring-1 ring-black/10 dark:ring-white/10"
+                              style={{ backgroundColor: theme.color }}
+                            />
+                            {theme.label}
+                          </span>
+                          {colorTheme === theme.id && <Check className="h-4 w-4" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
     </div>
   );
@@ -228,7 +315,7 @@ export default function Header({
                 </kbd>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-zinc-100 dark:border-zinc-800">
-                <span className="text-sm text-zinc-600 dark:text-zinc-400">Toggle Dark / Light Mode</span>
+                <span className="text-sm text-zinc-600 dark:text-zinc-400">Cycle Theme Mode</span>
                 <kbd className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs rounded shadow-sm font-mono text-zinc-800 dark:text-zinc-200">
                   Ctrl + M
                 </kbd>

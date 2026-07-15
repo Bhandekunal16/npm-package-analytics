@@ -8,9 +8,18 @@ import Header from './components/Header';
 import DashboardOverview from './components/DashboardOverview';
 import CompareView from './components/CompareView';
 import RankingsView from './components/RankingsView';
+import {
+  applyTheme,
+  readStoredColorTheme,
+  readStoredThemeMode,
+  THEME_MODES,
+  type ColorTheme,
+  type ThemeMode,
+} from './theme';
 
 export default function App() {
-  const [darkMode, setDarkMode] = useState<boolean>(true);
+  const [themeMode, setThemeMode] = useState<ThemeMode>(readStoredThemeMode);
+  const [colorTheme, setColorTheme] = useState<ColorTheme>(readStoredColorTheme);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'compare' | 'rankings'>('dashboard');
   const [activePackage, setActivePackage] = useState<string>('express');
 
@@ -37,6 +46,22 @@ export default function App() {
       setActivePackage(urlPkg.trim());
     }
   }, []);
+
+  useEffect(() => {
+    applyTheme(themeMode, colorTheme);
+    localStorage.setItem('npm_analytics_theme_mode', themeMode);
+    localStorage.setItem('npm_analytics_color_theme', colorTheme);
+  }, [themeMode, colorTheme]);
+
+  useEffect(() => {
+    if (themeMode !== 'system') return;
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = () => applyTheme('system', colorTheme);
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [themeMode, colorTheme]);
 
   // 2. Track recently viewed additions
   const handleSelectPackage = (name: string) => {
@@ -86,7 +111,11 @@ export default function App() {
       if (e.ctrlKey) {
         if (e.key === 'm' || e.key === 'M') {
           e.preventDefault();
-          setDarkMode((prev) => !prev);
+          setThemeMode((prev) => {
+            const currentIndex = THEME_MODES.findIndex((mode) => mode.id === prev);
+            const nextIndex = (currentIndex + 1) % THEME_MODES.length;
+            return THEME_MODES[nextIndex].id;
+          });
         } else if (e.key === 'd' || e.key === 'D') {
           e.preventDefault();
           setActiveTab('dashboard');
@@ -104,13 +133,14 @@ export default function App() {
   }, []);
 
   return (
-    <div className={darkMode ? 'dark' : 'light'}>
-      <div className="min-h-screen transition-colors duration-200 bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 font-sans">
+    <div className="min-h-screen transition-colors duration-200 bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 font-sans">
         
         {/* Navigation Navbar */}
         <Header
-          darkMode={darkMode}
-          setDarkMode={setDarkMode}
+          themeMode={themeMode}
+          setThemeMode={setThemeMode}
+          colorTheme={colorTheme}
+          setColorTheme={setColorTheme}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           favorites={favorites}
@@ -160,7 +190,6 @@ export default function App() {
           </div>
         </footer>
 
-      </div>
     </div>
   );
 }

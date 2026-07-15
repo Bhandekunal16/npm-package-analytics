@@ -5,6 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <title>NPM Package Analytics - Real-time Ecosystem Insights</title>
+    <script>
+      (function () {
+        var mode = localStorage.getItem('npm_analytics_theme_mode');
+        var isDark =
+          mode === 'dark' ||
+          (mode !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', isDark);
+        var colorTheme = localStorage.getItem('npm_analytics_color_theme');
+        if (colorTheme) {
+          document.documentElement.setAttribute('data-color-theme', colorTheme);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
