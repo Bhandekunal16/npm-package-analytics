@@ -112,6 +112,29 @@ export interface DownloadAnalytics {
   history: DownloadDay[];
 }
 
+export interface PackageComparisonMetrics {
+  bundleSizeBytes: number | null;
+  packageSizeBytes: number | null;
+  installSizeBytes: number | null;
+  packageAgeDays: number | null;
+  repositoryActivityDays: number | null;
+  lastPublishDaysAgo: number | null;
+  lastPublishDate: string;
+  contributorsCount: number | null;
+  releaseFrequencyDays: number | null;
+  dependencyCount: number;
+  license: string;
+  securityScore: number;
+  maintenanceScore: number;
+  busFactor: number | null;
+  treeShaking: boolean | null;
+  hasSideEffects: boolean | null;
+  supportsEsm: boolean;
+  supportsCjs: boolean;
+  hasFunding: boolean;
+  fundingUrl: string | null;
+}
+
 export interface NPMFullPackageData {
   name: string;
   description: string;
@@ -136,6 +159,7 @@ export interface NPMFullPackageData {
   security: SecurityStatus;
   repositoryRisk: RepositoryRisk;
   publisherInfo: PublisherInformation;
+  comparisonMetrics: PackageComparisonMetrics;
 }
 
 export interface RankingItem {

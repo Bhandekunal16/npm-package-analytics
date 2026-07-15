@@ -149,7 +149,7 @@ function daysSince(dateStr: string | null | undefined): number | null {
   return Math.round((Date.now() - parsed.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function computeBusFactor(commits: any[], contributors: any[]): { triggered: boolean; detail: string } {
+function computeBusFactor(commits: any[], contributors: any[]): { value: number; triggered: boolean; detail: string } {
   const authorCounts = new Map<string, number>();
   commits.forEach((commit) => {
     const login = commit.author?.login || commit.commit?.author?.name || "unknown";
@@ -159,10 +159,11 @@ function computeBusFactor(commits: any[], contributors: any[]): { triggered: boo
   const totalCommits = commits.length;
   if (totalCommits === 0) {
     const contributorCount = contributors.length;
+    const value = Math.max(contributorCount, 1);
     if (contributorCount <= 1) {
-      return { triggered: true, detail: `Only ${contributorCount} contributor on record` };
+      return { value, triggered: true, detail: `Only ${contributorCount} contributor on record` };
     }
-    return { triggered: false, detail: `${contributorCount} contributors listed` };
+    return { value, triggered: false, detail: `${contributorCount} contributors listed` };
   }
 
   const sortedCounts = [...authorCounts.values()].sort((a, b) => b - a);
@@ -179,18 +180,21 @@ function computeBusFactor(commits: any[], contributors: any[]): { triggered: boo
   const uniqueAuthors = authorCounts.size;
   if (peopleNeeded <= 1 || uniqueAuthors <= 1) {
     return {
+      value: peopleNeeded,
       triggered: true,
       detail: `Bus factor is ${peopleNeeded} — a single author accounts for most recent commits`,
     };
   }
   if (peopleNeeded === 2) {
     return {
+      value: peopleNeeded,
       triggered: true,
       detail: `Bus factor is ${peopleNeeded} — only two people account for half of recent commits`,
     };
   }
 
   return {
+    value: peopleNeeded,
     triggered: false,
     detail: `Bus factor is ${peopleNeeded} across ${uniqueAuthors} recent contributors`,
   };
@@ -433,6 +437,150 @@ async function fetchPublisherInformation(
   };
 }
 
+function hasExportCondition(exportsField: unknown, condition: string): boolean {
+  if (!exportsField || typeof exportsField !== "object") return false;
+  if (condition in (exportsField as Record<string, unknown>)) return true;
+  return Object.values(exportsField as Record<string, unknown>).some(
+    (value) => typeof value === "object" && value !== null && hasExportCondition(value, condition),
+  );
+}
+
+function normalizeFunding(funding: unknown): { hasFunding: boolean; fundingUrl: string | null } {
+  if (!funding) return { hasFunding: false, fundingUrl: null };
+  if (typeof funding === "string") return { hasFunding: true, fundingUrl: funding };
+  if (Array.isArray(funding)) {
+    const first = funding[0];
+    if (typeof first === "string") return { hasFunding: true, fundingUrl: first };
+    if (first && typeof first === "object" && "url" in first) {
+      return { hasFunding: true, fundingUrl: String((first as { url?: string }).url || "") };
+    }
+  }
+  if (typeof funding === "object" && funding !== null && "url" in funding) {
+    return { hasFunding: true, fundingUrl: String((funding as { url?: string }).url || "") };
+  }
+  return { hasFunding: true, fundingUrl: null };
+}
+
+function buildComparisonMetrics(input: {
+  registry: any;
+  latestVersionData: any;
+  versionsList: any[];
+  github: any;
+  health: any;
+  license: string;
+  busFactorValue: number | null;
+  releaseDaysAgo: number;
+  timeData: Record<string, string>;
+  latestVersionString: string;
+}) {
+  const { latestVersionData, versionsList, github, health, license, busFactorValue, releaseDaysAgo, timeData, latestVersionString } = input;
+  const unpackedSize = latestVersionData.dist?.unpackedSize ?? null;
+  const dependencyCount =
+    Object.keys(latestVersionData.dependencies || {}).length +
+    Object.keys(latestVersionData.peerDependencies || {}).length +
+    Object.keys(latestVersionData.optionalDependencies || {}).length;
+
+  const packageAgeDays = daysSince(timeData.created);
+  const lastPublishDate = timeData[latestVersionString] || timeData.modified || "";
+
+  let repositoryActivityDays: number | null = null;
+  if (github?.latestCommit?.date) {
+    repositoryActivityDays = daysSince(github.latestCommit.date);
+  }
+
+  const releaseGaps = versionsList
+    .map((version) => version.daysSincePrevious)
+    .filter((gap: number | undefined) => typeof gap === "number" && gap > 0) as number[];
+  const releaseFrequencyDays =
+    releaseGaps.length > 0
+      ? Math.round(releaseGaps.reduce((sum, gap) => sum + gap, 0) / releaseGaps.length)
+      : null;
+
+  const exportsField = latestVersionData.exports;
+  const supportsEsm =
+    latestVersionData.type === "module" ||
+    !!latestVersionData.module ||
+    hasExportCondition(exportsField, "import");
+  const supportsCjs =
+    !!latestVersionData.main ||
+    hasExportCondition(exportsField, "require") ||
+    hasExportCondition(exportsField, "default") ||
+    (!latestVersionData.type && !!latestVersionData.main);
+
+  const sideEffects = latestVersionData.sideEffects;
+  let hasSideEffects: boolean | null = null;
+  let treeShaking: boolean | null = null;
+  if (sideEffects === false) {
+    hasSideEffects = false;
+    treeShaking = true;
+  } else if (Array.isArray(sideEffects)) {
+    hasSideEffects = sideEffects.length > 0;
+    treeShaking = sideEffects.length === 0;
+  } else if (sideEffects === true) {
+    hasSideEffects = true;
+    treeShaking = false;
+  }
+
+  const funding = normalizeFunding(latestVersionData.funding || input.registry.funding);
+  const installSizeBytes =
+    unpackedSize !== null ? unpackedSize + dependencyCount * 65000 : null;
+
+  return {
+    bundleSizeBytes: unpackedSize,
+    packageSizeBytes: unpackedSize,
+    installSizeBytes,
+    packageAgeDays,
+    repositoryActivityDays,
+    lastPublishDaysAgo: releaseDaysAgo,
+    lastPublishDate,
+    contributorsCount: github?.contributorsCount ?? null,
+    releaseFrequencyDays,
+    dependencyCount,
+    license: license || "Proprietary",
+    securityScore: health?.metrics?.security?.score ?? 0,
+    maintenanceScore: health?.metrics?.maintenance?.score ?? 0,
+    busFactor: busFactorValue,
+    treeShaking,
+    hasSideEffects,
+    supportsEsm,
+    supportsCjs,
+    hasFunding: funding.hasFunding,
+    fundingUrl: funding.fundingUrl,
+  };
+}
+
+function buildComparisonMetricsFallback(payload: any) {
+  const dependencyCount = Object.keys(payload.dependencies || {}).length;
+  const releaseDaysAgo = payload.lastUpdated
+    ? daysSince(payload.lastUpdated) ?? 365
+    : 365;
+
+  return {
+    bundleSizeBytes: null,
+    packageSizeBytes: null,
+    installSizeBytes: null,
+    packageAgeDays: payload.publishDate ? daysSince(payload.publishDate) : null,
+    repositoryActivityDays: payload.github?.latestCommit?.date
+      ? daysSince(payload.github.latestCommit.date)
+      : null,
+    lastPublishDaysAgo: releaseDaysAgo,
+    lastPublishDate: payload.lastUpdated || "",
+    contributorsCount: payload.github?.contributorsCount ?? null,
+    releaseFrequencyDays: null,
+    dependencyCount,
+    license: payload.license || "Proprietary",
+    securityScore: payload.health?.metrics?.security?.score ?? 0,
+    maintenanceScore: payload.health?.metrics?.maintenance?.score ?? 0,
+    busFactor: null,
+    treeShaking: null,
+    hasSideEffects: null,
+    supportsEsm: false,
+    supportsCjs: !!payload.dependencies,
+    hasFunding: false,
+    fundingUrl: null,
+  };
+}
+
 function buildPublisherInfoFallback(payload: any, packageName: string) {
   const maintainers = normalizeMaintainers(payload.maintainers || []);
   const scope = getPackageScope(packageName || payload.name || "");
@@ -457,12 +605,15 @@ function enrichPackageResponse(payload: any, packageName: string) {
   if (!payload.publisherInfo) {
     payload.publisherInfo = buildPublisherInfoFallback(payload, packageName);
   }
+  if (!payload.comparisonMetrics) {
+    payload.comparisonMetrics = buildComparisonMetricsFallback(payload);
+  }
   return payload;
 }
 
 export async function getPackageAnalytics(packageName: string): Promise<any> {
   const decodedName = decodeURIComponent(packageName);
-  const cacheKey = `package:v2:${decodedName}`;
+  const cacheKey = `package:v3:${decodedName}`;
   const cached = cache.get(cacheKey);
   if (cached) {
     return enrichPackageResponse({ ...cached }, decodedName);
@@ -545,6 +696,7 @@ export async function getPackageAnalytics(packageName: string): Promise<any> {
 
     let github: any = null;
     let repositoryRisk: any = null;
+    let busFactorValue: number | null = null;
     if (gitInfo) {
       try {
         const headers: any = {};
@@ -593,6 +745,7 @@ export async function getPackageAnalytics(packageName: string): Promise<any> {
             hasReleases: riskData.hasReleases,
             hasReadme: riskData.hasReadme,
           });
+          busFactorValue = computeBusFactor(riskData.commits, riskData.contributors).value;
         }
       } catch (gitErr: any) {
         console.warn("GitHub Fetch Failed for repo:", gitInfo.owner, gitInfo.repo, gitErr.message);
@@ -673,6 +826,24 @@ export async function getPackageAnalytics(packageName: string): Promise<any> {
       latestVersionString,
     );
 
+    const comparisonMetrics = buildComparisonMetrics({
+      registry,
+      latestVersionData,
+      versionsList,
+      github,
+      health: {
+        metrics: {
+          maintenance: { score: mScore },
+          security: { score: sScore },
+        },
+      },
+      license: registry.license || "Proprietary",
+      busFactorValue,
+      releaseDaysAgo,
+      timeData,
+      latestVersionString,
+    });
+
     const responsePayload = {
       name: registry.name || decodedName,
       description: registry.description || "No description provided",
@@ -712,6 +883,7 @@ export async function getPackageAnalytics(packageName: string): Promise<any> {
       },
       repositoryRisk,
       publisherInfo,
+      comparisonMetrics,
     };
 
     cache.set(cacheKey, responsePayload, 60 * 60 * 1000);

@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Search, 
   Star, 
@@ -68,18 +69,79 @@ function KpiStatCard({
   onClose,
 }: KpiStatCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const [popupPosition, setPopupPosition] = useState<{ top: number; left: number } | null>(null);
+  const detailValue = fullValue ?? value;
+  const valueColor = accent
+    ? 'text-indigo-600 dark:text-indigo-400'
+    : 'text-zinc-900 dark:text-white';
+
+  const updatePopupPosition = useCallback(() => {
+    const card = cardRef.current;
+    const popup = popupRef.current;
+    if (!card) return;
+
+    const cardRect = card.getBoundingClientRect();
+    const popupWidth = popup?.offsetWidth ?? 200;
+    const margin = 8;
+    const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+    const viewportOffsetLeft = window.visualViewport?.offsetLeft ?? 0;
+
+    let left = cardRect.left + cardRect.width / 2 - popupWidth / 2;
+    left = Math.max(
+      viewportOffsetLeft + margin,
+      Math.min(left, viewportOffsetLeft + viewportWidth - popupWidth - margin),
+    );
+
+    setPopupPosition({
+      top: cardRect.bottom + 6,
+      left,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!expanded) {
+      setPopupPosition(null);
+      return;
+    }
+
+    updatePopupPosition();
+    const frameId = window.requestAnimationFrame(updatePopupPosition);
+
+    const visualViewport = window.visualViewport;
+    visualViewport?.addEventListener('resize', updatePopupPosition);
+    visualViewport?.addEventListener('scroll', updatePopupPosition);
+    window.addEventListener('resize', updatePopupPosition);
+    window.addEventListener('scroll', updatePopupPosition, true);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      visualViewport?.removeEventListener('resize', updatePopupPosition);
+      visualViewport?.removeEventListener('scroll', updatePopupPosition);
+      window.removeEventListener('resize', updatePopupPosition);
+      window.removeEventListener('scroll', updatePopupPosition, true);
+    };
+  }, [expanded, updatePopupPosition, detailValue]);
 
   useEffect(() => {
     if (!expanded) return;
 
     const close = (event: MouseEvent) => {
-      if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
-        onClose();
+      const target = event.target as Node;
+      if (cardRef.current?.contains(target) || popupRef.current?.contains(target)) {
+        return;
       }
+      onClose();
     };
 
-    document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
+    const timeoutId = window.setTimeout(() => {
+      document.addEventListener('mousedown', close);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      document.removeEventListener('mousedown', close);
+    };
   }, [expanded, onClose]);
 
   const handleClick = () => {
@@ -90,11 +152,6 @@ function KpiStatCard({
       onExpand();
     }
   };
-
-  const detailValue = fullValue ?? value;
-  const valueColor = accent
-    ? 'text-indigo-600 dark:text-indigo-400'
-    : 'text-zinc-900 dark:text-white';
 
   return (
     <div ref={cardRef} className="relative min-w-0 h-full">
@@ -123,15 +180,20 @@ function KpiStatCard({
         </span>
       </div>
 
-      {expanded && (
-        <div className="hidden md:block absolute left-1/2 -translate-x-1/2 top-[calc(100%+0.375rem)] z-50 w-max max-w-[min(20rem,calc(100vw-2rem))] p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl ring-1 ring-indigo-500/20">
+      {expanded && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={popupRef}
+          className="hidden md:block fixed z-[200] w-max max-w-[min(20rem,calc(100vw-2rem))] p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl ring-1 ring-indigo-500/20"
+          style={popupPosition ? { top: popupPosition.top, left: popupPosition.left } : { top: -9999, left: -9999 }}
+        >
           <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block leading-tight">
             {label}
           </span>
           <span className={`text-base font-mono font-bold mt-1 block tabular-nums whitespace-nowrap ${valueColor}`}>
             {detailValue}
           </span>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

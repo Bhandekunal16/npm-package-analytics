@@ -3,24 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
-import { 
-  GitCompare, 
-  Plus, 
-  X, 
-  HelpCircle, 
-  Check, 
+import React, { useState } from 'react';
+import {
+  GitCompare,
+  Plus,
+  X,
   AlertTriangle,
-  Award,
-  Download,
-  Star,
-  Layers,
-  Calendar,
-  AlertOctagon
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { NPMFullPackageData } from '../types';
-import { resolvePublisherInfo, resolveRepositoryRisk } from '../packageDefaults';
+import {
+  COMPARE_ROWS,
+  getRowHighlights,
+  highlightClass,
+  resolveComparisonMetrics,
+} from '../compareMetrics';
 
 interface CompareViewProps {
   onSelectPackage: (name: string) => void;
@@ -33,7 +30,6 @@ export default function CompareView({ onSelectPackage, favorites }: CompareViewP
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load standard pre-comparisons on click
   const loadPreset = async (pkgs: string[]) => {
     setLoading(true);
     setError(null);
@@ -45,7 +41,7 @@ export default function CompareView({ onSelectPackage, favorites }: CompareViewP
             return await res.json();
           }
           throw new Error(`Failed to load ${name}`);
-        })
+        }),
       );
       setComparedPkgs(responses);
     } catch (err: any) {
@@ -92,17 +88,11 @@ export default function CompareView({ onSelectPackage, favorites }: CompareViewP
     setError(null);
   };
 
-  // Compile combined chart history
-  // Since packages might have slight alignment issues in their download dates,
-  // we align history based on date indices for the last 30 days
   const getCombinedChartData = () => {
     if (comparedPkgs.length === 0) return [];
-    
-    // We'll use the last 30 days of history
+
     const daysCount = 30;
     const chartData: any[] = [];
-
-    // Get dates list from the first package's history
     const sampleHistory = comparedPkgs[0].downloads.history || [];
     const last30Days = sampleHistory.slice(-daysCount);
 
@@ -112,7 +102,6 @@ export default function CompareView({ onSelectPackage, favorites }: CompareViewP
 
       comparedPkgs.forEach((pkg) => {
         const pkgHistory = pkg.downloads.history || [];
-        // Match by day string or relative index
         const match = pkgHistory[dateIndex] || pkgHistory.find((h) => h.day === dayEntry.day);
         dataPoint[pkg.name] = match ? match.downloads : 0;
       });
@@ -128,19 +117,17 @@ export default function CompareView({ onSelectPackage, favorites }: CompareViewP
 
   return (
     <div className="space-y-8 py-4">
-      {/* Visual Title */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-sans font-extrabold text-zinc-900 dark:text-white flex items-center gap-2.5">
             <GitCompare className="h-6 w-6 text-indigo-500" />
-            Ecosystem Comparison
+            Package Comparison
           </h2>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-            Analyze, contrast, and weigh up to 4 packages side-by-side on downloads, stars, security, and health.
+            Side-by-side metrics across size, activity, security, maintenance, and module format. Best values are green; worst are red.
           </p>
         </div>
 
-        {/* Quick presets */}
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold text-zinc-400">Battle Presets:</span>
           <button
@@ -164,7 +151,6 @@ export default function CompareView({ onSelectPackage, favorites }: CompareViewP
         </div>
       </div>
 
-      {/* Comparison Input Drawer */}
       <div className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 backdrop-blur-md shadow-md">
         <h3 className="text-sm font-bold text-zinc-700 dark:text-zinc-300 mb-3">Add package to compare list (max 4)</h3>
         <div className="flex gap-2.5 max-w-lg">
@@ -193,7 +179,6 @@ export default function CompareView({ onSelectPackage, favorites }: CompareViewP
           </p>
         )}
 
-        {/* Selected packages badges */}
         <div className="flex flex-wrap gap-2.5 mt-5">
           {comparedPkgs.map((pkg, idx) => (
             <div
@@ -221,7 +206,6 @@ export default function CompareView({ onSelectPackage, favorites }: CompareViewP
 
       {comparedPkgs.length > 0 && (
         <>
-          {/* Comparison download trends chart */}
           <div className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 backdrop-blur-md shadow-lg">
             <div className="flex justify-between items-center mb-6">
               <div>
@@ -234,30 +218,25 @@ export default function CompareView({ onSelectPackage, favorites }: CompareViewP
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" className="dark:hidden" />
                   <CartesianGrid strokeDasharray="3 3" stroke="#27272a" className="hidden dark:block" />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="#888888" 
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={false}
-                    dy={10}
-                  />
-                  <YAxis 
-                    stroke="#888888" 
+                  <XAxis dataKey="date" stroke="#888888" fontSize={11} tickLine={false} axisLine={false} dy={10} />
+                  <YAxis
+                    stroke="#888888"
                     fontSize={11}
                     tickLine={false}
                     axisLine={false}
                     dx={-10}
-                    tickFormatter={(val) => val >= 1000000 ? `${(val / 1000000).toFixed(1)}M` : val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}
+                    tickFormatter={(val) =>
+                      val >= 1000000 ? `${(val / 1000000).toFixed(1)}M` : val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val
+                    }
                   />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'rgba(23, 23, 23, 0.95)', 
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'rgba(23, 23, 23, 0.95)',
                       borderColor: '#3f3f46',
                       borderRadius: '12px',
                       color: '#ffffff',
                       fontFamily: 'monospace',
-                      fontSize: '11px'
+                      fontSize: '11px',
                     }}
                   />
                   <Legend verticalAlign="top" height={36} />
@@ -277,15 +256,22 @@ export default function CompareView({ onSelectPackage, favorites }: CompareViewP
             </div>
           </div>
 
-          {/* Side by side stats grid */}
           <div className="border border-zinc-200 dark:border-zinc-800/80 rounded-2xl bg-white dark:bg-zinc-900/40 backdrop-blur-md overflow-hidden shadow-lg">
+            <div className="px-6 py-3 border-b border-zinc-100 dark:border-zinc-800 flex flex-wrap items-center gap-4 text-[10px] text-zinc-500 dark:text-zinc-400">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Best value
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-rose-500" /> Worst value
+              </span>
+            </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse table-fixed">
+              <table className="w-full text-left border-collapse min-w-[720px]">
                 <thead>
                   <tr className="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-150 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 text-[10px] font-bold uppercase tracking-wider">
-                    <th className="py-4 px-6 w-52">Feature Comparison</th>
-                    {comparedPkgs.map((pkg, idx) => (
-                      <th key={pkg.name} className="py-4 px-6 text-center">
+                    <th className="py-4 px-6 w-56 sticky left-0 z-10 bg-zinc-50 dark:bg-zinc-900/95 backdrop-blur-sm">Metric</th>
+                    {comparedPkgs.map((pkg) => (
+                      <th key={pkg.name} className="py-4 px-4 text-center min-w-[140px]">
                         <div className="flex flex-col items-center gap-1">
                           <span className="font-mono text-sm font-bold text-zinc-900 dark:text-white truncate max-w-[150px]">{pkg.name}</span>
                           <span className="text-[10px] px-1.5 py-0.5 font-mono rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400">
@@ -297,192 +283,45 @@ export default function CompareView({ onSelectPackage, favorites }: CompareViewP
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/40 text-xs">
-                  
-                  {/* Health Score */}
+                  {COMPARE_ROWS.map((row) => {
+                    const highlights = getRowHighlights(comparedPkgs, row);
+                    return (
+                      <tr key={row.id} className="hover:bg-zinc-50/30 dark:hover:bg-zinc-900/10">
+                        <td className="py-3.5 px-6 font-semibold text-zinc-700 dark:text-zinc-300 sticky left-0 z-10 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm">
+                          {row.label}
+                        </td>
+                        {comparedPkgs.map((pkg, pkgIndex) => {
+                          const metrics = resolveComparisonMetrics(pkg);
+                          const display = row.format(pkg, metrics);
+                          return (
+                            <td key={pkg.name} className="py-3.5 px-4 text-center">
+                              <span
+                                className={`inline-flex items-center justify-center px-2.5 py-1 rounded-lg font-mono text-[11px] ${highlightClass(highlights[pkgIndex])}`}
+                              >
+                                {display}
+                              </span>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+
                   <tr className="hover:bg-zinc-50/30 dark:hover:bg-zinc-900/10">
-                    <td className="py-4 px-6 font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                      <Award className="h-4 w-4 text-indigo-500" /> Health Rating (100)
+                    <td className="py-3.5 px-6 font-semibold text-zinc-700 dark:text-zinc-300 sticky left-0 z-10 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm">
+                      Open Dashboard
                     </td>
                     {comparedPkgs.map((pkg) => (
-                      <td key={pkg.name} className="py-4 px-6 text-center">
-                        <div className="flex flex-col items-center gap-1.5">
-                          <span className="font-mono font-bold text-sm text-zinc-900 dark:text-white">{pkg.health.score} / 100</span>
-                          <div className="w-24 bg-zinc-100 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full ${
-                                pkg.health.score >= 85 ? 'bg-emerald-500' :
-                                pkg.health.score >= 60 ? 'bg-amber-500' :
-                                'bg-rose-500'
-                              }`}
-                              style={{ width: `${pkg.health.score}%` }}
-                            />
-                          </div>
-                        </div>
-                      </td>
-                    ))}
-                  </tr>
-
-                  {/* Weekly Downloads */}
-                  <tr className="hover:bg-zinc-50/30 dark:hover:bg-zinc-900/10">
-                    <td className="py-4 px-6 font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                      <Download className="h-4 w-4 text-emerald-500" /> Weekly Downloads
-                    </td>
-                    {comparedPkgs.map((pkg) => (
-                      <td key={pkg.name} className="py-4 px-6 text-center font-mono font-bold text-zinc-800 dark:text-zinc-200">
-                        {pkg.downloads.lastWeek.toLocaleString()}
-                      </td>
-                    ))}
-                  </tr>
-
-                  {/* GitHub Stars */}
-                  <tr className="hover:bg-zinc-50/30 dark:hover:bg-zinc-900/10">
-                    <td className="py-4 px-6 font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                      <Star className="h-4 w-4 text-amber-500" /> GitHub Stars
-                    </td>
-                    {comparedPkgs.map((pkg) => (
-                      <td key={pkg.name} className="py-4 px-6 text-center font-mono font-bold text-zinc-800 dark:text-zinc-200">
-                        {pkg.github ? pkg.github.stars.toLocaleString() : 'N/A'}
-                      </td>
-                    ))}
-                  </tr>
-
-                  {/* TypeScript Support */}
-                  <tr className="hover:bg-zinc-50/30 dark:hover:bg-zinc-900/10">
-                    <td className="py-4 px-6 font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                      <HelpCircle className="h-4 w-4 text-teal-500" /> TS Typing Support
-                    </td>
-                    {comparedPkgs.map((pkg) => (
-                      <td key={pkg.name} className="py-4 px-6 text-center">
-                        {pkg.health.metrics.typescript.value ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-400 font-semibold text-[10px]">
-                            <Check className="h-3 w-3" /> Ready
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-[10px]">
-                            Fallback
-                          </span>
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-
-                  {/* Direct Dependencies */}
-                  <tr className="hover:bg-zinc-50/30 dark:hover:bg-zinc-900/10">
-                    <td className="py-4 px-6 font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                      <Layers className="h-4 w-4 text-pink-500" /> Dependencies Count
-                    </td>
-                    {comparedPkgs.map((pkg) => (
-                      <td key={pkg.name} className="py-4 px-6 text-center font-mono font-semibold text-zinc-800 dark:text-zinc-200">
-                        {Object.keys(pkg.dependencies).length} direct
-                      </td>
-                    ))}
-                  </tr>
-
-                  {/* License */}
-                  <tr className="hover:bg-zinc-50/30 dark:hover:bg-zinc-900/10">
-                    <td className="py-4 px-6 font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                      <Award className="h-4 w-4 text-zinc-400" /> Ecosystem License
-                    </td>
-                    {comparedPkgs.map((pkg) => (
-                      <td key={pkg.name} className="py-4 px-6 text-center font-mono font-medium text-zinc-700 dark:text-zinc-300">
-                        {pkg.license}
-                      </td>
-                    ))}
-                  </tr>
-
-                  {/* Release Cadence */}
-                  <tr className="hover:bg-zinc-50/30 dark:hover:bg-zinc-900/10">
-                    <td className="py-4 px-6 font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                      <Calendar className="h-4 w-4 text-indigo-400" /> Release Frequency
-                    </td>
-                    {comparedPkgs.map((pkg) => (
-                      <td key={pkg.name} className="py-4 px-6 text-center font-sans text-zinc-600 dark:text-zinc-400">
-                        {pkg.health.metrics.maintenance.value}
-                      </td>
-                    ))}
-                  </tr>
-
-                  {/* Repository Risk */}
-                  <tr className="hover:bg-zinc-50/30 dark:hover:bg-zinc-900/10">
-                    <td className="py-4 px-6 font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                      <AlertOctagon className="h-4 w-4 text-amber-500" /> Repository Risk
-                    </td>
-                    {comparedPkgs.map((pkg) => {
-                      const repositoryRisk = resolveRepositoryRisk(pkg);
-                      return (
-                      <td key={pkg.name} className="py-4 px-6 text-center">
-                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                          repositoryRisk.level === 'High'
-                            ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400'
-                            : repositoryRisk.level === 'Medium'
-                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400'
-                              : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
-                        }`}>
-                          {repositoryRisk.level}
-                        </span>
-                      </td>
-                    );})}
-                  </tr>
-
-                  {/* Primary Author */}
-                  <tr className="hover:bg-zinc-50/30 dark:hover:bg-zinc-900/10">
-                    <td className="py-4 px-6 font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                      <Award className="h-4 w-4 text-amber-500" /> Publisher
-                    </td>
-                    {comparedPkgs.map((pkg) => (
-                      <td key={pkg.name} className="py-4 px-6 text-center font-mono font-semibold text-zinc-800 dark:text-zinc-200 truncate max-w-[120px]">
-                        {resolvePublisherInfo(pkg).publisher}
-                      </td>
-                    ))}
-                  </tr>
-
-                  <tr className="hover:bg-zinc-50/30 dark:hover:bg-zinc-900/10">
-                    <td className="py-4 px-6 font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                      <Award className="h-4 w-4 text-indigo-400" /> Maintainer Count
-                    </td>
-                    {comparedPkgs.map((pkg) => (
-                      <td key={pkg.name} className="py-4 px-6 text-center font-mono font-bold text-zinc-800 dark:text-zinc-200">
-                        {resolvePublisherInfo(pkg).maintainerCount}
-                      </td>
-                    ))}
-                  </tr>
-
-                  <tr className="hover:bg-zinc-50/30 dark:hover:bg-zinc-900/10">
-                    <td className="py-4 px-6 font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                      <Award className="h-4 w-4 text-emerald-500" /> Verified Publisher
-                    </td>
-                    {comparedPkgs.map((pkg) => {
-                      const publisherInfo = resolvePublisherInfo(pkg);
-                      return (
-                      <td key={pkg.name} className="py-4 px-6 text-center">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                          publisherInfo.verifiedPublisher
-                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
-                            : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
-                        }`}>
-                          {publisherInfo.verifiedPublisher ? 'Yes' : 'No'}
-                        </span>
-                      </td>
-                    );})}
-                  </tr>
-
-                  {/* Action Link */}
-                  <tr className="hover:bg-zinc-50/30 dark:hover:bg-zinc-900/10">
-                    <td className="py-4 px-6 font-semibold text-zinc-700 dark:text-zinc-300">
-                      Primary Analysis
-                    </td>
-                    {comparedPkgs.map((pkg) => (
-                      <td key={pkg.name} className="py-4 px-6 text-center">
+                      <td key={pkg.name} className="py-3.5 px-4 text-center">
                         <button
                           onClick={() => onSelectPackage(pkg.name)}
                           className="px-2.5 py-1 text-xs font-semibold rounded bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-all"
                         >
-                          Open Dashboard
+                          Analyze
                         </button>
                       </td>
                     ))}
                   </tr>
-
                 </tbody>
               </table>
             </div>
