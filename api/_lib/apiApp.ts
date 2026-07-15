@@ -137,12 +137,335 @@ const POPULAR_PACKAGES = [
   "lodash", "axios", "uuid", "zod", "framer-motion", "redux", "zustand", "next", "esbuild", "prettier",
 ];
 
+const STALE_ISSUE_DAYS = 365;
+const INACTIVE_REPO_DAYS = 180;
+const LOW_CONTRIBUTOR_THRESHOLD = 3;
+const STALE_ISSUE_COUNT_THRESHOLD = 5;
+
+function daysSince(dateStr: string | null | undefined): number | null {
+  if (!dateStr) return null;
+  const parsed = new Date(dateStr);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return Math.round((Date.now() - parsed.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function computeBusFactor(commits: any[], contributors: any[]): { triggered: boolean; detail: string } {
+  const authorCounts = new Map<string, number>();
+  commits.forEach((commit) => {
+    const login = commit.author?.login || commit.commit?.author?.name || "unknown";
+    authorCounts.set(login, (authorCounts.get(login) || 0) + 1);
+  });
+
+  const totalCommits = commits.length;
+  if (totalCommits === 0) {
+    const contributorCount = contributors.length;
+    if (contributorCount <= 1) {
+      return { triggered: true, detail: `Only ${contributorCount} contributor on record` };
+    }
+    return { triggered: false, detail: `${contributorCount} contributors listed` };
+  }
+
+  const sortedCounts = [...authorCounts.values()].sort((a, b) => b - a);
+  let cumulative = 0;
+  let peopleNeeded = 0;
+  const half = totalCommits / 2;
+
+  for (const count of sortedCounts) {
+    cumulative += count;
+    peopleNeeded++;
+    if (cumulative >= half) break;
+  }
+
+  const uniqueAuthors = authorCounts.size;
+  if (peopleNeeded <= 1 || uniqueAuthors <= 1) {
+    return {
+      triggered: true,
+      detail: `Bus factor is ${peopleNeeded} — a single author accounts for most recent commits`,
+    };
+  }
+  if (peopleNeeded === 2) {
+    return {
+      triggered: true,
+      detail: `Bus factor is ${peopleNeeded} — only two people account for half of recent commits`,
+    };
+  }
+
+  return {
+    triggered: false,
+    detail: `Bus factor is ${peopleNeeded} across ${uniqueAuthors} recent contributors`,
+  };
+}
+
+function computeRepositoryRisk(input: {
+  hasGithub: boolean;
+  gitRepo?: any;
+  contributors?: any[];
+  commits?: any[];
+  issues?: any[];
+  hasReleases?: boolean;
+  hasReadme?: boolean;
+}): any {
+  const noGithubFactors = {
+    busFactor: { label: "Bus factor", triggered: false, detail: "No GitHub repository linked" },
+    inactiveMaintainers: { label: "Inactive maintainers", triggered: false, detail: "No GitHub repository linked" },
+    archivedRepository: { label: "Archived repository", triggered: false, detail: "No GitHub repository linked" },
+    staleIssues: { label: "Too many stale issues", triggered: false, detail: "No GitHub repository linked" },
+    noReleases: { label: "No releases", triggered: false, detail: "No GitHub repository linked" },
+    lowContributorCount: { label: "Low contributor count", triggered: false, detail: "No GitHub repository linked" },
+    noDocumentation: { label: "No documentation", triggered: false, detail: "No GitHub repository linked" },
+  };
+
+  if (!input.hasGithub || !input.gitRepo) {
+    return {
+      level: "Medium",
+      factors: noGithubFactors,
+      summary: "No linked GitHub repository — repository risk cannot be fully assessed",
+    };
+  }
+
+  const gitRepo = input.gitRepo;
+  const contributors = input.contributors || [];
+  const commits = input.commits || [];
+  const issues = input.issues || [];
+
+  const busFactor = computeBusFactor(commits, contributors);
+
+  const daysSincePush = daysSince(gitRepo.pushed_at);
+  const inactiveMaintainers = {
+    label: "Inactive maintainers",
+    triggered: daysSincePush === null || daysSincePush > INACTIVE_REPO_DAYS,
+    detail:
+      daysSincePush === null
+        ? "No recent push activity recorded"
+        : daysSincePush > INACTIVE_REPO_DAYS
+          ? `Last push was ${daysSincePush} days ago`
+          : `Last push was ${daysSincePush} days ago`,
+  };
+
+  const archivedRepository = {
+    label: "Archived repository",
+    triggered: !!gitRepo.archived,
+    detail: gitRepo.archived ? "Repository is archived on GitHub" : "Repository is active",
+  };
+
+  const openIssues = issues.length;
+  const staleIssuesList = issues.filter((issue) => {
+    const days = daysSince(issue.updated_at);
+    return days !== null && days > STALE_ISSUE_DAYS;
+  });
+  const staleCount = staleIssuesList.length;
+  const staleRatio = openIssues > 0 ? staleCount / openIssues : 0;
+  const staleIssues = {
+    label: "Too many stale issues",
+    triggered: staleCount >= STALE_ISSUE_COUNT_THRESHOLD || (openIssues > 0 && staleRatio >= 0.5),
+    detail:
+      openIssues === 0
+        ? "No open issues"
+        : `${staleCount} of ${openIssues} open issues untouched for over a year`,
+  };
+
+  const noReleases = {
+    label: "No releases",
+    triggered: !input.hasReleases,
+    detail: input.hasReleases ? "GitHub releases are published" : "No GitHub releases found",
+  };
+
+  const contributorCount = contributors.length;
+  const lowContributorCount = {
+    label: "Low contributor count",
+    triggered: contributorCount < LOW_CONTRIBUTOR_THRESHOLD,
+    detail:
+      contributorCount === 0
+        ? "No contributors recorded"
+        : `${contributorCount} contributor${contributorCount === 1 ? "" : "s"} on record`,
+  };
+
+  const hasDocs = !!input.hasReadme || !!gitRepo.has_wiki || !!gitRepo.description;
+  const noDocumentation = {
+    label: "No documentation",
+    triggered: !hasDocs,
+    detail: hasDocs ? "README, wiki, or repository description present" : "No README, wiki, or description found",
+  };
+
+  const factors = {
+    busFactor: { label: "Bus factor", ...busFactor },
+    inactiveMaintainers,
+    archivedRepository,
+    staleIssues,
+    noReleases,
+    lowContributorCount,
+    noDocumentation,
+  };
+
+  const triggeredCount = Object.values(factors).filter((f) => f.triggered).length;
+  let level: "Low" | "Medium" | "High" = "Low";
+  if (archivedRepository.triggered || triggeredCount >= 4) {
+    level = "High";
+  } else if (triggeredCount >= 2) {
+    level = "Medium";
+  }
+
+  const summary =
+    level === "High"
+      ? `${triggeredCount} risk signal${triggeredCount === 1 ? "" : "s"} detected — exercise caution before adopting`
+      : level === "Medium"
+        ? `${triggeredCount} moderate risk signal${triggeredCount === 1 ? "" : "s"} — review repository health`
+        : triggeredCount === 0
+          ? "Repository appears healthy with no major risk signals"
+          : `${triggeredCount} minor risk signal${triggeredCount === 1 ? "" : "s"} detected`;
+
+  return { level, factors, summary };
+}
+
+async function fetchGithubRiskData(owner: string, repo: string, headers: Record<string, string>) {
+  const base = `https://api.github.com/repos/${owner}/${repo}`;
+  const [contributorsRes, commitsRes, issuesRes, releasesRes, readmeRes] = await Promise.all([
+    fetchWithRetry(`${base}/contributors?per_page=100`, { headers }).catch(() => null),
+    fetchWithRetry(`${base}/commits?per_page=30`, { headers }).catch(() => null),
+    fetchWithRetry(`${base}/issues?state=open&per_page=30&sort=updated`, { headers }).catch(() => null),
+    fetchWithRetry(`${base}/releases?per_page=1`, { headers }).catch(() => null),
+    fetchWithRetry(`${base}/readme`, { headers }).catch(() => null),
+  ]);
+
+  const contributors = contributorsRes?.ok ? await contributorsRes.json() : [];
+  const commits = commitsRes?.ok ? await commitsRes.json() : [];
+  const issuesRaw = issuesRes?.ok ? await issuesRes.json() : [];
+  const issues = Array.isArray(issuesRaw) ? issuesRaw.filter((item: any) => !item.pull_request) : [];
+  const releases = releasesRes?.ok ? await releasesRes.json() : [];
+  const hasReleases = Array.isArray(releases) && releases.length > 0;
+  const hasReadme = readmeRes?.ok === true;
+
+  return { contributors, commits, issues, hasReleases, hasReadme };
+}
+
+function getPackageScope(packageName: string): string | null {
+  if (packageName.startsWith("@") && packageName.includes("/")) {
+    return packageName.split("/")[0].slice(1);
+  }
+  return null;
+}
+
+function normalizeMaintainers(maintainers: any[]): any[] {
+  return (maintainers || []).map((maintainer) => ({
+    name: maintainer.name || maintainer.username || "Unknown",
+    email: maintainer.email,
+    url: maintainer.url,
+  }));
+}
+
+async function fetchPublisherInformation(
+  packageName: string,
+  registry: any,
+  latestVersionData: any,
+  maintainers: any[],
+  timeData: Record<string, string>,
+  latestVersionString: string,
+) {
+  const normalizedMaintainers = normalizeMaintainers(maintainers);
+  const publisherUser = latestVersionData._npmUser;
+  const publisher =
+    publisherUser?.name ||
+    normalizedMaintainers[0]?.name ||
+    (typeof registry.author === "string" ? registry.author : registry.author?.name) ||
+    "Unknown";
+
+  const scope = getPackageScope(packageName);
+  const organization = scope ? `@${scope}` : null;
+  const firstPublish = timeData.created || "";
+  const lastPublish = timeData[latestVersionString] || timeData.modified || "";
+  const hasSignatures = Array.isArray(latestVersionData.dist?.signatures) && latestVersionData.dist.signatures.length > 0;
+
+  let packagesPublished: number | null = null;
+  let orgRegistered = false;
+
+  if (scope) {
+    try {
+      const orgRes = await fetchWithRetry(`https://registry.npmjs.org/-/org/${scope}/package`);
+      if (orgRes.ok) {
+        const orgPackages = await orgRes.json();
+        if (orgPackages && typeof orgPackages === "object" && !orgPackages.error) {
+          packagesPublished = Object.keys(orgPackages).length;
+          orgRegistered = true;
+        }
+      }
+    } catch {
+      // non-fatal
+    }
+  }
+
+  if (packagesPublished === null && publisher !== "Unknown") {
+    try {
+      const searchRes = await fetchWithRetry(
+        `https://registry.npmjs.org/-/v1/search?text=maintainer:${encodeURIComponent(publisher)}&size=1`,
+      );
+      if (searchRes.ok) {
+        const searchData = await searchRes.json();
+        packagesPublished = typeof searchData.total === "number" ? searchData.total : null;
+      }
+    } catch {
+      // non-fatal
+    }
+  }
+
+  const verifiedPublisher = orgRegistered || hasSignatures || (!!publisherUser?.name && !!publisherUser?.email);
+
+  let verifiedPublisherDetail = "Publisher account could not be verified";
+  if (orgRegistered && hasSignatures) {
+    verifiedPublisherDetail = "Registered npm organization with signed latest release";
+  } else if (orgRegistered) {
+    verifiedPublisherDetail = "Published under a registered npm organization";
+  } else if (hasSignatures) {
+    verifiedPublisherDetail = "Latest release tarball is cryptographically signed";
+  } else if (publisherUser?.name && publisherUser?.email) {
+    verifiedPublisherDetail = "Latest publish linked to a public npm user profile";
+  }
+
+  return {
+    publisher,
+    maintainers: normalizedMaintainers,
+    organization,
+    verifiedPublisher,
+    verifiedPublisherDetail,
+    maintainerCount: normalizedMaintainers.length,
+    firstPublish,
+    lastPublish,
+    packagesPublished,
+  };
+}
+
+function buildPublisherInfoFallback(payload: any, packageName: string) {
+  const maintainers = normalizeMaintainers(payload.maintainers || []);
+  const scope = getPackageScope(packageName || payload.name || "");
+
+  return {
+    publisher: maintainers[0]?.name || payload.author?.name || "Unknown",
+    maintainers,
+    organization: scope ? `@${scope}` : null,
+    verifiedPublisher: false,
+    verifiedPublisherDetail: "Publisher details unavailable — reload the package to refresh",
+    maintainerCount: maintainers.length,
+    firstPublish: payload.publishDate || "",
+    lastPublish: payload.lastUpdated || "",
+    packagesPublished: null,
+  };
+}
+
+function enrichPackageResponse(payload: any, packageName: string) {
+  if (!payload.repositoryRisk) {
+    payload.repositoryRisk = computeRepositoryRisk({ hasGithub: !!payload.github });
+  }
+  if (!payload.publisherInfo) {
+    payload.publisherInfo = buildPublisherInfoFallback(payload, packageName);
+  }
+  return payload;
+}
+
 export async function getPackageAnalytics(packageName: string): Promise<any> {
   const decodedName = decodeURIComponent(packageName);
-  const cacheKey = `package:${decodedName}`;
+  const cacheKey = `package:v2:${decodedName}`;
   const cached = cache.get(cacheKey);
   if (cached) {
-    return cached;
+    return enrichPackageResponse({ ...cached }, decodedName);
   }
 
   return deduplicator.deduplicate(cacheKey, async () => {
@@ -221,6 +544,7 @@ export async function getPackageAnalytics(packageName: string): Promise<any> {
     const gitInfo = parseGithubUrl(registry.repository || latestVersionData.repository);
 
     let github: any = null;
+    let repositoryRisk: any = null;
     if (gitInfo) {
       try {
         const headers: any = {};
@@ -232,11 +556,12 @@ export async function getPackageAnalytics(packageName: string): Promise<any> {
         if (gitRepoRes.ok) {
           const gitRepo = await gitRepoRes.json();
 
-          let languages = {};
-          const gitLangRes = await fetchWithRetry(`https://api.github.com/repos/${gitInfo.owner}/${gitInfo.repo}/languages`, { headers });
-          if (gitLangRes.ok) {
-            languages = await gitLangRes.json();
-          }
+          const [languages, riskData] = await Promise.all([
+            fetchWithRetry(`https://api.github.com/repos/${gitInfo.owner}/${gitInfo.repo}/languages`, { headers })
+              .then(async (res) => (res.ok ? res.json() : {}))
+              .catch(() => ({})),
+            fetchGithubRiskData(gitInfo.owner, gitInfo.repo, headers),
+          ]);
 
           github = {
             owner: gitInfo.owner,
@@ -248,11 +573,34 @@ export async function getPackageAnalytics(packageName: string): Promise<any> {
             size: gitRepo.size || 0,
             defaultBranch: gitRepo.default_branch || "main",
             languages,
+            contributorsCount: riskData.contributors.length,
+            latestCommit: riskData.commits[0]
+              ? {
+                  sha: riskData.commits[0].sha?.slice(0, 7) || "",
+                  message: riskData.commits[0].commit?.message?.split("\n")[0] || "",
+                  date: riskData.commits[0].commit?.author?.date || "",
+                  author: riskData.commits[0].author?.login || riskData.commits[0].commit?.author?.name || "",
+                }
+              : undefined,
           };
+
+          repositoryRisk = computeRepositoryRisk({
+            hasGithub: true,
+            gitRepo,
+            contributors: riskData.contributors,
+            commits: riskData.commits,
+            issues: riskData.issues,
+            hasReleases: riskData.hasReleases,
+            hasReadme: riskData.hasReadme,
+          });
         }
       } catch (gitErr: any) {
         console.warn("GitHub Fetch Failed for repo:", gitInfo.owner, gitInfo.repo, gitErr.message);
       }
+    }
+
+    if (!repositoryRisk) {
+      repositoryRisk = computeRepositoryRisk({ hasGithub: false });
     }
 
     const timeData = registry.time || {};
@@ -315,6 +663,16 @@ export async function getPackageAnalytics(packageName: string): Promise<any> {
 
     const healthScore = Math.max(0, Math.min(100, mScore + dScore + tsScore + cScore + sScore));
 
+    const maintainers = registry.maintainers || [];
+    const publisherInfo = await fetchPublisherInformation(
+      decodedName,
+      registry,
+      latestVersionData,
+      maintainers,
+      timeData,
+      latestVersionString,
+    );
+
     const responsePayload = {
       name: registry.name || decodedName,
       description: registry.description || "No description provided",
@@ -327,7 +685,7 @@ export async function getPackageAnalytics(packageName: string): Promise<any> {
       publishDate: timeData.created || "",
       lastUpdated: lastReleaseDateStr,
       totalVersions: versionsList.length,
-      maintainers: registry.maintainers || [],
+      maintainers,
       dependencies: latestVersionData.dependencies || {},
       devDependencies: latestVersionData.devDependencies || {},
       peerDependencies: latestVersionData.peerDependencies || {},
@@ -352,10 +710,12 @@ export async function getPackageAnalytics(packageName: string): Promise<any> {
         hasSecurityAdvisories,
         advisoriesCount: 0,
       },
+      repositoryRisk,
+      publisherInfo,
     };
 
     cache.set(cacheKey, responsePayload, 60 * 60 * 1000);
-    return responsePayload;
+    return enrichPackageResponse(responsePayload, decodedName);
   });
 }
 

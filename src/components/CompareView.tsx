@@ -15,10 +15,12 @@ import {
   Download,
   Star,
   Layers,
-  Calendar
+  Calendar,
+  AlertOctagon
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { NPMFullPackageData } from '../types';
+import { resolvePublisherInfo, resolveRepositoryRisk } from '../packageDefaults';
 
 interface CompareViewProps {
   onSelectPackage: (name: string) => void;
@@ -400,16 +402,68 @@ export default function CompareView({ onSelectPackage, favorites }: CompareViewP
                     ))}
                   </tr>
 
+                  {/* Repository Risk */}
+                  <tr className="hover:bg-zinc-50/30 dark:hover:bg-zinc-900/10">
+                    <td className="py-4 px-6 font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                      <AlertOctagon className="h-4 w-4 text-amber-500" /> Repository Risk
+                    </td>
+                    {comparedPkgs.map((pkg) => {
+                      const repositoryRisk = resolveRepositoryRisk(pkg);
+                      return (
+                      <td key={pkg.name} className="py-4 px-6 text-center">
+                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                          repositoryRisk.level === 'High'
+                            ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400'
+                            : repositoryRisk.level === 'Medium'
+                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400'
+                              : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
+                        }`}>
+                          {repositoryRisk.level}
+                        </span>
+                      </td>
+                    );})}
+                  </tr>
+
                   {/* Primary Author */}
                   <tr className="hover:bg-zinc-50/30 dark:hover:bg-zinc-900/10">
                     <td className="py-4 px-6 font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                      <Award className="h-4 w-4 text-amber-500" /> Core Publisher
+                      <Award className="h-4 w-4 text-amber-500" /> Publisher
                     </td>
                     {comparedPkgs.map((pkg) => (
-                      <td key={pkg.name} className="py-4 px-6 text-center font-sans text-zinc-600 dark:text-zinc-400 truncate max-w-[120px]">
-                        {pkg.author?.name || 'Community'}
+                      <td key={pkg.name} className="py-4 px-6 text-center font-mono font-semibold text-zinc-800 dark:text-zinc-200 truncate max-w-[120px]">
+                        {resolvePublisherInfo(pkg).publisher}
                       </td>
                     ))}
+                  </tr>
+
+                  <tr className="hover:bg-zinc-50/30 dark:hover:bg-zinc-900/10">
+                    <td className="py-4 px-6 font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                      <Award className="h-4 w-4 text-indigo-400" /> Maintainer Count
+                    </td>
+                    {comparedPkgs.map((pkg) => (
+                      <td key={pkg.name} className="py-4 px-6 text-center font-mono font-bold text-zinc-800 dark:text-zinc-200">
+                        {resolvePublisherInfo(pkg).maintainerCount}
+                      </td>
+                    ))}
+                  </tr>
+
+                  <tr className="hover:bg-zinc-50/30 dark:hover:bg-zinc-900/10">
+                    <td className="py-4 px-6 font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                      <Award className="h-4 w-4 text-emerald-500" /> Verified Publisher
+                    </td>
+                    {comparedPkgs.map((pkg) => {
+                      const publisherInfo = resolvePublisherInfo(pkg);
+                      return (
+                      <td key={pkg.name} className="py-4 px-6 text-center">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                          publisherInfo.verifiedPublisher
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
+                            : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
+                        }`}>
+                          {publisherInfo.verifiedPublisher ? 'Yes' : 'No'}
+                        </span>
+                      </td>
+                    );})}
                   </tr>
 
                   {/* Action Link */}

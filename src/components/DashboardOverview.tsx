@@ -26,7 +26,10 @@ import {
   HelpCircle,
   Terminal,
   Activity,
-  Layers
+  Layers,
+  AlertOctagon,
+  BadgeCheck,
+  Building2
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -39,7 +42,8 @@ import {
   Tooltip, 
   ResponsiveContainer 
 } from 'recharts';
-import { NPMFullPackageData, SearchResult } from '../types';
+import { NPMFullPackageData, RepositoryRiskLevel, SearchResult } from '../types';
+import { resolvePublisherInfo, resolveRepositoryRisk } from '../packageDefaults';
 import DependencyTree from './DependencyTree';
 
 interface KpiStatCardProps {
@@ -131,6 +135,36 @@ function KpiStatCard({
       )}
     </div>
   );
+}
+
+function repositoryRiskStyles(level: RepositoryRiskLevel) {
+  if (level === 'High') {
+    return {
+      text: 'text-rose-700 dark:text-rose-400',
+      bg: 'bg-rose-50 dark:bg-rose-950/40',
+      border: 'border-rose-200 dark:border-rose-900/40',
+      badge: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400',
+    };
+  }
+  if (level === 'Medium') {
+    return {
+      text: 'text-amber-700 dark:text-amber-400',
+      bg: 'bg-amber-50 dark:bg-amber-950/40',
+      border: 'border-amber-200 dark:border-amber-900/40',
+      badge: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400',
+    };
+  }
+  return {
+    text: 'text-emerald-700 dark:text-emerald-400',
+    bg: 'bg-emerald-50 dark:bg-emerald-950/40',
+    border: 'border-emerald-200 dark:border-emerald-900/40',
+    badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400',
+  };
+}
+
+function formatPublishDate(dateStr: string): string {
+  if (!dateStr) return 'N/A';
+  return dateStr.split('T')[0];
 }
 
 interface DashboardOverviewProps {
@@ -281,6 +315,9 @@ export default function DashboardOverview({
       </div>
     );
   }
+
+  const publisherInfo = resolvePublisherInfo(pkgData);
+  const repositoryRisk = resolveRepositoryRisk(pkgData);
 
   // Filter downloads data based on range
   const getFilteredChartData = () => {
@@ -524,7 +561,7 @@ export default function DashboardOverview({
       </div>
 
       {/* 3. Global Ecosystem KPI Tiles Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3 sm:gap-4 items-stretch w-full min-w-0">
+      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-9 gap-3 sm:gap-4 items-stretch w-full min-w-0">
         <KpiStatCard
           label="Downloads Today"
           value={pkgData.downloads.today.toLocaleString()}
@@ -592,6 +629,14 @@ export default function DashboardOverview({
           title={pkgData.lastUpdated ? pkgData.lastUpdated.split('T')[0] : 'N/A'}
           expanded={expandedKpi === 'last-release'}
           onExpand={() => setExpandedKpi('last-release')}
+          onClose={() => setExpandedKpi(null)}
+        />
+        <KpiStatCard
+          label="Repository Risk"
+          value={repositoryRisk.level}
+          title={`Repository Risk: ${repositoryRisk.level}`}
+          expanded={expandedKpi === 'repository-risk'}
+          onExpand={() => setExpandedKpi('repository-risk')}
           onClose={() => setExpandedKpi(null)}
         />
       </div>
@@ -1029,10 +1074,139 @@ export default function DashboardOverview({
 
       {/* Tab D: Security, Deprecations and Maintainers */}
       {activeTabSection === 'security' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
+        <div className="space-y-6">
+          {/* Repository Risk */}
+          <div className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 backdrop-blur-md shadow-md space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-zinc-100 dark:border-zinc-900 pb-4">
+              <h3 className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                <AlertOctagon className="h-4.5 w-4.5 text-amber-500" /> Repository Risk
+              </h3>
+              <span className={`self-start sm:self-auto px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full ${repositoryRiskStyles(repositoryRisk.level).badge}`}>
+                {repositoryRisk.level}
+              </span>
+            </div>
+
+            <p className={`text-xs font-medium px-4 py-3 rounded-xl border ${repositoryRiskStyles(repositoryRisk.level).bg} ${repositoryRiskStyles(repositoryRisk.level).border} ${repositoryRiskStyles(repositoryRisk.level).text}`}>
+              {repositoryRisk.summary}
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {Object.entries(repositoryRisk.factors).map(([key, factor]) => (
+                <div
+                  key={key}
+                  className={`p-3.5 rounded-xl border text-xs ${
+                    factor.triggered
+                      ? 'border-rose-200 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/20'
+                      : 'border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-900/10'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-bold text-zinc-800 dark:text-zinc-200">{factor.label}</span>
+                    {factor.triggered ? (
+                      <AlertTriangle className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                    ) : (
+                      <CheckCircle className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                    )}
+                  </div>
+                  <p className="text-zinc-500 dark:text-zinc-400 mt-1.5 leading-relaxed">{factor.detail}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Publisher Information */}
+          <div className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 backdrop-blur-md shadow-md space-y-5">
+            <h3 className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2 border-b border-zinc-100 dark:border-zinc-900 pb-4">
+              <User className="h-4.5 w-4.5 text-indigo-500" /> Publisher Information
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+              <div className="p-3.5 rounded-xl border border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-900/10">
+                <span className="text-zinc-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">Publisher</span>
+                <span className="font-mono font-bold text-zinc-900 dark:text-white mt-1 block truncate">{publisherInfo.publisher}</span>
+              </div>
+              <div className="p-3.5 rounded-xl border border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-900/10">
+                <span className="text-zinc-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">Organization</span>
+                <span className="font-mono font-bold text-zinc-900 dark:text-white mt-1 block truncate flex items-center gap-1.5">
+                  {publisherInfo.organization ? (
+                    <>
+                      <Building2 className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                      {publisherInfo.organization}
+                    </>
+                  ) : (
+                    'Unscoped package'
+                  )}
+                </span>
+              </div>
+              <div className="p-3.5 rounded-xl border border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-900/10">
+                <span className="text-zinc-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">Verified Publisher</span>
+                <span className={`mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                  publisherInfo.verifiedPublisher
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
+                    : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
+                }`}>
+                  {publisherInfo.verifiedPublisher ? (
+                    <><BadgeCheck className="h-3 w-3" /> Yes</>
+                  ) : (
+                    'No'
+                  )}
+                </span>
+                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1.5 leading-relaxed">{publisherInfo.verifiedPublisherDetail}</p>
+              </div>
+              <div className="p-3.5 rounded-xl border border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-900/10">
+                <span className="text-zinc-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">Maintainer Count</span>
+                <span className="font-mono font-bold text-zinc-900 dark:text-white mt-1 block">{publisherInfo.maintainerCount}</span>
+              </div>
+              <div className="p-3.5 rounded-xl border border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-900/10">
+                <span className="text-zinc-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">First Publish</span>
+                <span className="font-mono font-semibold text-zinc-800 dark:text-zinc-200 mt-1 block">{formatPublishDate(publisherInfo.firstPublish)}</span>
+              </div>
+              <div className="p-3.5 rounded-xl border border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-900/10">
+                <span className="text-zinc-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">Last Publish</span>
+                <span className="font-mono font-semibold text-zinc-800 dark:text-zinc-200 mt-1 block">{formatPublishDate(publisherInfo.lastPublish)}</span>
+              </div>
+              <div className="p-3.5 rounded-xl border border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-900/10 sm:col-span-2">
+                <span className="text-zinc-400 dark:text-zinc-500 block text-[10px] font-bold uppercase tracking-wider">Packages Published</span>
+                <span className="font-mono font-bold text-zinc-900 dark:text-white mt-1 block">
+                  {publisherInfo.packagesPublished !== null
+                    ? publisherInfo.packagesPublished.toLocaleString()
+                    : 'N/A'}
+                </span>
+                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">
+                  {publisherInfo.organization
+                    ? 'Total packages under this npm organization scope'
+                    : 'Total packages where this publisher is listed as maintainer'}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3 pt-1">
+              <h4 className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Maintainers</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[240px] overflow-y-auto pr-1">
+                {publisherInfo.maintainers.map((m) => (
+                  <div
+                    key={m.name}
+                    className="p-3 rounded-lg border border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-900/10 flex items-center gap-2.5"
+                  >
+                    <div className="h-7 w-7 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400 flex items-center justify-center font-bold font-sans text-xs uppercase shadow-sm shrink-0">
+                      {m.name.slice(0, 2)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-xs font-bold text-zinc-950 dark:text-white block truncate">{m.name}</span>
+                      {m.email && <span className="text-[10px] text-zinc-400 truncate block mt-0.5">{m.email}</span>}
+                    </div>
+                  </div>
+                ))}
+                {publisherInfo.maintainers.length === 0 && (
+                  <p className="text-xs text-zinc-400 text-center py-4 sm:col-span-2">No maintainers listed on the registry.</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+        <div>
           {/* Advisory details */}
-          <div className="lg:col-span-2 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 backdrop-blur-md shadow-md space-y-6">
+          <div className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 backdrop-blur-md shadow-md space-y-6">
             <h3 className="text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
               <ShieldAlert className="h-4.5 w-4.5 text-rose-500" /> Integrity & Deprecation status
             </h3>
@@ -1077,36 +1251,7 @@ export default function DashboardOverview({
             </div>
           </div>
 
-          {/* Maintainers detail cards */}
-          <div className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 backdrop-blur-md shadow-md">
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-2 mb-4">
-              <User className="h-4.5 w-4.5 text-indigo-500" /> Core Ecosystem Publishers
-            </h3>
-            <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-4">
-              Authorized maintainers responsible for releasing versions to the public.
-            </p>
-
-            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
-              {pkgData.maintainers.map((m) => (
-                <div
-                  key={m.name}
-                  className="p-3 rounded-lg border border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-900/10 flex items-center gap-2.5"
-                >
-                  <div className="h-7 w-7 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400 flex items-center justify-center font-bold font-sans text-xs uppercase shadow-sm">
-                    {m.name.slice(0, 2)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <span className="text-xs font-bold text-zinc-950 dark:text-white block truncate">{m.name}</span>
-                    {m.email && <span className="text-[10px] text-zinc-400 truncate block mt-0.5">{m.email}</span>}
-                  </div>
-                </div>
-              ))}
-              {pkgData.maintainers.length === 0 && (
-                <p className="text-xs text-zinc-400 text-center py-4">No specific maintainer listed.</p>
-              )}
-            </div>
-          </div>
-
+        </div>
         </div>
       )}
 

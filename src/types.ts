@@ -30,6 +30,40 @@ export interface SecurityStatus {
   advisoriesCount: number;
 }
 
+export type RepositoryRiskLevel = 'Low' | 'Medium' | 'High';
+
+export interface RepositoryRiskFactor {
+  label: string;
+  triggered: boolean;
+  detail: string;
+}
+
+export interface RepositoryRisk {
+  level: RepositoryRiskLevel;
+  factors: {
+    busFactor: RepositoryRiskFactor;
+    inactiveMaintainers: RepositoryRiskFactor;
+    archivedRepository: RepositoryRiskFactor;
+    staleIssues: RepositoryRiskFactor;
+    noReleases: RepositoryRiskFactor;
+    lowContributorCount: RepositoryRiskFactor;
+    noDocumentation: RepositoryRiskFactor;
+  };
+  summary: string;
+}
+
+export interface PublisherInformation {
+  publisher: string;
+  maintainers: Maintainer[];
+  organization: string | null;
+  verifiedPublisher: boolean;
+  verifiedPublisherDetail: string;
+  maintainerCount: number;
+  firstPublish: string;
+  lastPublish: string;
+  packagesPublished: number | null;
+}
+
 export interface PackageHealth {
   score: number;
   metrics: {
@@ -100,6 +134,8 @@ export interface NPMFullPackageData {
   github?: GitHubStats;
   health: PackageHealth;
   security: SecurityStatus;
+  repositoryRisk: RepositoryRisk;
+  publisherInfo: PublisherInformation;
 }
 
 export interface RankingItem {
