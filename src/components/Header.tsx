@@ -42,58 +42,26 @@ export default function Header({
   const [showFavs, setShowFavs] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
-  return (
-    <header className="sticky top-0 z-40 w-full border-b border-zinc-200 dark:border-zinc-800/80 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        
-        {/* Brand Logo */}
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
-          <img src="/icon.svg" alt="" className="w-8 h-8 rounded-lg shadow-[0_0_15px_rgba(79,70,229,0.5)]" />
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-              NPM <span className="text-zinc-500 dark:text-zinc-400 font-normal">Analytics</span>
-            </h1>
-          </div>
-        </div>
+  const tabs = [
+    { id: 'dashboard' as const, label: 'Dashboard' },
+    { id: 'compare' as const, label: 'Compare' },
+    { id: 'rankings' as const, label: 'Rankings' },
+  ];
 
-        {/* Primary Tabs */}
-        <nav className="flex space-x-1 sm:space-x-2">
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold tracking-tight transition-all ${
-              activeTab === 'dashboard'
-                ? 'bg-indigo-600 dark:bg-indigo-600/20 dark:text-indigo-400 text-white shadow-sm'
-                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white'
-            }`}
-          >
-            Dashboard
-          </button>
-          <button
-            onClick={() => setActiveTab('compare')}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold tracking-tight transition-all ${
-              activeTab === 'compare'
-                ? 'bg-indigo-600 dark:bg-indigo-600/20 dark:text-indigo-400 text-white shadow-sm'
-                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white'
-            }`}
-          >
-            Compare
-          </button>
-          <button
-            onClick={() => setActiveTab('rankings')}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold tracking-tight transition-all ${
-              activeTab === 'rankings'
-                ? 'bg-indigo-600 dark:bg-indigo-600/20 dark:text-indigo-400 text-white shadow-sm'
-                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white'
-            }`}
-          >
-            Rankings
-          </button>
-        </nav>
+  const brand = (
+    <div
+      className="flex items-center gap-2 sm:gap-3 min-w-0 cursor-pointer"
+      onClick={() => setActiveTab('dashboard')}
+    >
+      <img src="/icon.svg" alt="" className="w-7 h-7 sm:w-8 sm:h-8 shrink-0 rounded-lg shadow-[0_0_15px_rgba(79,70,229,0.5)]" />
+      <h1 className="text-base sm:text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 truncate">
+        NPM <span className="hidden min-[400px]:inline text-zinc-500 dark:text-zinc-400 font-normal">Analytics</span>
+      </h1>
+    </div>
+  );
 
-        {/* Global Toolbar */}
-        <div className="flex items-center space-x-3">
-          
-          {/* Favorites Button */}
+  const toolbar = (
+    <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
           <div className="relative">
             <button
               onClick={() => {
@@ -196,7 +164,47 @@ export default function Header({
             {darkMode ? <Sun className="h-5 w-5 text-amber-400" /> : <Moon className="h-5 w-5 text-indigo-600" />}
           </button>
 
+    </div>
+  );
+
+  const tabNav = (mobile: boolean) => (
+    <nav className={mobile ? 'flex w-full gap-1' : 'flex gap-2'}>
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          onClick={() => setActiveTab(tab.id)}
+          className={`${mobile ? 'flex-1 min-w-0' : ''} px-3 py-1.5 rounded-full text-xs font-semibold tracking-tight transition-all whitespace-nowrap ${
+            activeTab === tab.id
+              ? 'bg-indigo-600 dark:bg-indigo-600/20 dark:text-indigo-400 text-white shadow-sm'
+              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white'
+          }`}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </nav>
+  );
+
+  return (
+    <header className="sticky top-0 z-40 w-full border-b border-zinc-200 dark:border-zinc-800/80 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-md">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        {/* Mobile: title + actions on row 1, tabs on row 2 */}
+        <div className="md:hidden py-3 space-y-3">
+          <div className="flex items-center justify-between gap-3 min-w-0">
+            {brand}
+            {toolbar}
+          </div>
+          {tabNav(true)}
         </div>
+
+        {/* Desktop: single row */}
+        <div className="hidden md:flex h-16 items-center justify-between gap-6">
+          {brand}
+          {tabNav(false)}
+          {toolbar}
+        </div>
+
       </div>
 
       {/* Keyboard Shortcuts Modal */}
