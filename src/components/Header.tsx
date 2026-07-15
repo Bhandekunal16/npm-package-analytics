@@ -48,9 +48,7 @@ export default function Header({
         
         {/* Brand Logo */}
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center font-bold italic text-white shadow-[0_0_15px_rgba(79,70,229,0.5)]">
-            N
-          </div>
+          <img src="/icon.svg" alt="" className="w-8 h-8 rounded-lg shadow-[0_0_15px_rgba(79,70,229,0.5)]" />
           <div>
             <h1 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
               NPM <span className="text-zinc-500 dark:text-zinc-400 font-normal">Analytics</span>
