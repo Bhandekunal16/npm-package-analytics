@@ -42,6 +42,97 @@ import {
 import { NPMFullPackageData, SearchResult } from '../types';
 import DependencyTree from './DependencyTree';
 
+interface KpiStatCardProps {
+  label: string;
+  value: React.ReactNode;
+  fullValue?: React.ReactNode;
+  title?: string;
+  accent?: boolean;
+  expanded: boolean;
+  onExpand: () => void;
+  onClose: () => void;
+}
+
+function KpiStatCard({
+  label,
+  value,
+  fullValue,
+  title,
+  accent,
+  expanded,
+  onExpand,
+  onClose,
+}: KpiStatCardProps) {
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!expanded) return;
+
+    const close = (event: MouseEvent) => {
+      if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [expanded, onClose]);
+
+  const handleClick = () => {
+    if (!window.matchMedia('(min-width: 768px)').matches) return;
+    if (expanded) {
+      onClose();
+    } else {
+      onExpand();
+    }
+  };
+
+  const detailValue = fullValue ?? value;
+  const valueColor = accent
+    ? 'text-indigo-600 dark:text-indigo-400'
+    : 'text-zinc-900 dark:text-white';
+
+  return (
+    <div ref={cardRef} className="relative min-w-0 h-full">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={handleClick}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            handleClick();
+          }
+        }}
+        title={!expanded ? title : undefined}
+        className={`h-full min-h-[4.75rem] flex flex-col justify-center min-w-0 p-3 sm:p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm hover:border-indigo-500/50 transition-colors md:cursor-pointer overflow-hidden ${
+          expanded ? 'md:ring-2 md:ring-indigo-500/40' : ''
+        }`}
+      >
+        <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block leading-tight">
+          {label}
+        </span>
+        <span
+          className={`text-sm sm:text-base xl:text-lg font-mono font-bold mt-1 block tabular-nums truncate ${valueColor}`}
+        >
+          {value}
+        </span>
+      </div>
+
+      {expanded && (
+        <div className="hidden md:block absolute left-1/2 -translate-x-1/2 top-[calc(100%+0.375rem)] z-50 w-max max-w-[min(20rem,calc(100vw-2rem))] p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl ring-1 ring-indigo-500/20">
+          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block leading-tight">
+            {label}
+          </span>
+          <span className={`text-base font-mono font-bold mt-1 block tabular-nums whitespace-nowrap ${valueColor}`}>
+            {detailValue}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface DashboardOverviewProps {
   packageName: string;
   onSelectPackage: (name: string) => void;
@@ -68,6 +159,7 @@ export default function DashboardOverview({
   const [customEndDate, setCustomEndDate] = useState('');
   const [showMovingAverage, setShowMovingAverage] = useState(false);
   const [activeTabSection, setActiveTabSection] = useState<'overview' | 'dependencies' | 'versions' | 'security'>('overview');
+  const [expandedKpi, setExpandedKpi] = useState<string | null>(null);
 
   const searchRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -95,6 +187,10 @@ export default function DashboardOverview({
       }
     }
     loadPackage();
+  }, [packageName]);
+
+  useEffect(() => {
+    setExpandedKpi(null);
   }, [packageName]);
 
   // Autocomplete suggestions search with simple debouncing
@@ -428,72 +524,76 @@ export default function DashboardOverview({
       </div>
 
       {/* 3. Global Ecosystem KPI Tiles Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3 sm:gap-4">
-        
-        {/* KPI: Downloads Today */}
-        <div className="min-w-0 overflow-hidden p-3 sm:p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm hover:border-indigo-500/50 transition-all">
-          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block leading-tight">Downloads Today</span>
-          <span className="text-sm sm:text-base xl:text-lg font-mono font-bold text-zinc-900 dark:text-white mt-1 block truncate tabular-nums" title={pkgData.downloads.today.toLocaleString()}>
-            {pkgData.downloads.today.toLocaleString()}
-          </span>
-        </div>
-
-        {/* KPI: Downloads Week */}
-        <div className="min-w-0 overflow-hidden p-3 sm:p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm hover:border-indigo-500/50 transition-all">
-          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block leading-tight">This Week</span>
-          <span className="text-sm sm:text-base xl:text-lg font-mono font-bold text-zinc-900 dark:text-white mt-1 block truncate tabular-nums" title={pkgData.downloads.lastWeek.toLocaleString()}>
-            {pkgData.downloads.lastWeek.toLocaleString()}
-          </span>
-        </div>
-
-        {/* KPI: Downloads Month */}
-        <div className="min-w-0 overflow-hidden p-3 sm:p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm hover:border-indigo-500/50 transition-all">
-          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block leading-tight">This Month</span>
-          <span className="text-sm sm:text-base xl:text-lg font-mono font-bold text-zinc-900 dark:text-white mt-1 block truncate tabular-nums" title={pkgData.downloads.lastMonth.toLocaleString()}>
-            {pkgData.downloads.lastMonth.toLocaleString()}
-          </span>
-        </div>
-
-        {/* KPI: Downloads Year */}
-        <div className="min-w-0 overflow-hidden p-3 sm:p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm hover:border-indigo-500/50 transition-all">
-          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block leading-tight">This Year</span>
-          <span className="text-sm sm:text-base xl:text-lg font-mono font-bold text-zinc-900 dark:text-white mt-1 block truncate tabular-nums" title={pkgData.downloads.lastYear.toLocaleString()}>
-            {pkgData.downloads.lastYear.toLocaleString()}
-          </span>
-        </div>
-
-        {/* KPI: Health Score */}
-        <div className="min-w-0 overflow-hidden p-3 sm:p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm hover:border-indigo-500/50 transition-all">
-          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block leading-tight">Health score</span>
-          <span className="text-sm sm:text-base xl:text-lg font-mono font-bold text-indigo-600 dark:text-indigo-400 mt-1 block truncate tabular-nums">
-            {pkgData.health.score} <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-sans">/ 100</span>
-          </span>
-        </div>
-
-        {/* KPI: GitHub Stars */}
-        <div className="min-w-0 overflow-hidden p-3 sm:p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm hover:border-indigo-500/50 transition-all">
-          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block leading-tight">GitHub Stars</span>
-          <span className="text-sm sm:text-base xl:text-lg font-mono font-bold text-zinc-900 dark:text-white mt-1 block truncate tabular-nums" title={pkgData.github ? pkgData.github.stars.toLocaleString() : 'N/A'}>
-            {pkgData.github ? pkgData.github.stars.toLocaleString() : 'N/A'}
-          </span>
-        </div>
-
-        {/* KPI: Total Versions */}
-        <div className="min-w-0 overflow-hidden p-3 sm:p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm hover:border-indigo-500/50 transition-all">
-          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block leading-tight">Total versions</span>
-          <span className="text-sm sm:text-base xl:text-lg font-mono font-bold text-zinc-900 dark:text-white mt-1 block truncate tabular-nums">
-            {pkgData.totalVersions}
-          </span>
-        </div>
-
-        {/* KPI: Last Release Date */}
-        <div className="min-w-0 overflow-hidden p-3 sm:p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm hover:border-indigo-500/50 transition-all">
-          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block leading-tight">Last release</span>
-          <span className="text-xs font-mono font-semibold text-zinc-800 dark:text-zinc-200 mt-1.5 block truncate tabular-nums">
-            {pkgData.lastUpdated ? pkgData.lastUpdated.split('T')[0] : 'N/A'}
-          </span>
-        </div>
-
+      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3 sm:gap-4 items-stretch">
+        <KpiStatCard
+          label="Downloads Today"
+          value={pkgData.downloads.today.toLocaleString()}
+          title={pkgData.downloads.today.toLocaleString()}
+          expanded={expandedKpi === 'downloads-today'}
+          onExpand={() => setExpandedKpi('downloads-today')}
+          onClose={() => setExpandedKpi(null)}
+        />
+        <KpiStatCard
+          label="This Week"
+          value={pkgData.downloads.lastWeek.toLocaleString()}
+          title={pkgData.downloads.lastWeek.toLocaleString()}
+          expanded={expandedKpi === 'downloads-week'}
+          onExpand={() => setExpandedKpi('downloads-week')}
+          onClose={() => setExpandedKpi(null)}
+        />
+        <KpiStatCard
+          label="This Month"
+          value={pkgData.downloads.lastMonth.toLocaleString()}
+          title={pkgData.downloads.lastMonth.toLocaleString()}
+          expanded={expandedKpi === 'downloads-month'}
+          onExpand={() => setExpandedKpi('downloads-month')}
+          onClose={() => setExpandedKpi(null)}
+        />
+        <KpiStatCard
+          label="This Year"
+          value={pkgData.downloads.lastYear.toLocaleString()}
+          title={pkgData.downloads.lastYear.toLocaleString()}
+          expanded={expandedKpi === 'downloads-year'}
+          onExpand={() => setExpandedKpi('downloads-year')}
+          onClose={() => setExpandedKpi(null)}
+        />
+        <KpiStatCard
+          label="Health score"
+          accent
+          value={
+            <>
+              {pkgData.health.score}{' '}
+              <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-sans">/ 100</span>
+            </>
+          }
+          fullValue={`${pkgData.health.score} / 100`}
+          expanded={expandedKpi === 'health-score'}
+          onExpand={() => setExpandedKpi('health-score')}
+          onClose={() => setExpandedKpi(null)}
+        />
+        <KpiStatCard
+          label="GitHub Stars"
+          value={pkgData.github ? pkgData.github.stars.toLocaleString() : 'N/A'}
+          title={pkgData.github ? pkgData.github.stars.toLocaleString() : 'N/A'}
+          expanded={expandedKpi === 'github-stars'}
+          onExpand={() => setExpandedKpi('github-stars')}
+          onClose={() => setExpandedKpi(null)}
+        />
+        <KpiStatCard
+          label="Total versions"
+          value={pkgData.totalVersions}
+          expanded={expandedKpi === 'total-versions'}
+          onExpand={() => setExpandedKpi('total-versions')}
+          onClose={() => setExpandedKpi(null)}
+        />
+        <KpiStatCard
+          label="Last release"
+          value={pkgData.lastUpdated ? pkgData.lastUpdated.split('T')[0] : 'N/A'}
+          title={pkgData.lastUpdated ? pkgData.lastUpdated.split('T')[0] : 'N/A'}
+          expanded={expandedKpi === 'last-release'}
+          onExpand={() => setExpandedKpi('last-release')}
+          onClose={() => setExpandedKpi(null)}
+        />
       </div>
 
       {/* 4. Sub-Section Navigation Tabs */}
