@@ -87,6 +87,16 @@ npm run build
 npm start
 ```
 
+### Deploy to Vercel
+
+This project uses Vercel serverless functions for the API (`api/index.ts`) and Vite for the static frontend.
+
+1. Push the repo to GitHub and import it in [Vercel](https://vercel.com)
+2. Vercel auto-detects the Vite build; `vercel.json` routes `/api/*` to the Express API handler
+3. Optionally add `GITHUB_TOKEN` in Vercel project settings → Environment Variables
+
+> **Note:** The API does not run from `server.ts` on Vercel — only the static `dist/` output and `/api` serverless functions are deployed. Local dev still uses `npm run dev` with the full Express server.
+
 ---
 
 ## API endpoints
