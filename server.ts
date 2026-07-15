@@ -7,7 +7,7 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
-import { createApiApp } from "./server/apiApp";
+import { createApiApp } from "./api/_lib/apiApp.js";
 
 dotenv.config();
 

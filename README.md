@@ -127,7 +127,11 @@ npm-package-analytics/
 │   │   ├── DependencyTree.tsx
 │   │   └── Header.tsx
 │   └── types.ts
-├── server.ts             # Express API + Vite middleware
+├── api/
+│   ├── index.ts          # Vercel serverless API entry
+│   └── _lib/
+│       └── apiApp.ts     # Shared Express API logic
+├── server.ts             # Local dev server (Express + Vite)
 ├── index.html
 └── vite.config.ts
 ```

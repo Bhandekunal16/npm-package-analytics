@@ -4,7 +4,7 @@
  */
 
 import dotenv from "dotenv";
-import { createApiApp } from "../server/apiApp";
+import { createApiApp } from "./_lib/apiApp.js";
 
 dotenv.config();
 
