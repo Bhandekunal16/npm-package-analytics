@@ -428,68 +428,68 @@ export default function DashboardOverview({
       </div>
 
       {/* 3. Global Ecosystem KPI Tiles Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3 sm:gap-4">
         
         {/* KPI: Downloads Today */}
-        <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm hover:border-indigo-500/50 transition-all">
-          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Downloads Today</span>
-          <span className="text-lg font-mono font-bold text-zinc-900 dark:text-white mt-1 block">
+        <div className="min-w-0 overflow-hidden p-3 sm:p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm hover:border-indigo-500/50 transition-all">
+          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block leading-tight">Downloads Today</span>
+          <span className="text-sm sm:text-base xl:text-lg font-mono font-bold text-zinc-900 dark:text-white mt-1 block truncate tabular-nums" title={pkgData.downloads.today.toLocaleString()}>
             {pkgData.downloads.today.toLocaleString()}
           </span>
         </div>
 
         {/* KPI: Downloads Week */}
-        <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm col-span-1 hover:border-indigo-500/50 transition-all">
-          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">This Week</span>
-          <span className="text-lg font-mono font-bold text-zinc-900 dark:text-white mt-1 block">
+        <div className="min-w-0 overflow-hidden p-3 sm:p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm hover:border-indigo-500/50 transition-all">
+          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block leading-tight">This Week</span>
+          <span className="text-sm sm:text-base xl:text-lg font-mono font-bold text-zinc-900 dark:text-white mt-1 block truncate tabular-nums" title={pkgData.downloads.lastWeek.toLocaleString()}>
             {pkgData.downloads.lastWeek.toLocaleString()}
           </span>
         </div>
 
         {/* KPI: Downloads Month */}
-        <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm hover:border-indigo-500/50 transition-all">
-          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">This Month</span>
-          <span className="text-lg font-mono font-bold text-zinc-900 dark:text-white mt-1 block">
+        <div className="min-w-0 overflow-hidden p-3 sm:p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm hover:border-indigo-500/50 transition-all">
+          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block leading-tight">This Month</span>
+          <span className="text-sm sm:text-base xl:text-lg font-mono font-bold text-zinc-900 dark:text-white mt-1 block truncate tabular-nums" title={pkgData.downloads.lastMonth.toLocaleString()}>
             {pkgData.downloads.lastMonth.toLocaleString()}
           </span>
         </div>
 
         {/* KPI: Downloads Year */}
-        <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm hover:border-indigo-500/50 transition-all">
-          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">This Year</span>
-          <span className="text-lg font-mono font-bold text-zinc-900 dark:text-white mt-1 block">
+        <div className="min-w-0 overflow-hidden p-3 sm:p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm hover:border-indigo-500/50 transition-all">
+          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block leading-tight">This Year</span>
+          <span className="text-sm sm:text-base xl:text-lg font-mono font-bold text-zinc-900 dark:text-white mt-1 block truncate tabular-nums" title={pkgData.downloads.lastYear.toLocaleString()}>
             {pkgData.downloads.lastYear.toLocaleString()}
           </span>
         </div>
 
         {/* KPI: Health Score */}
-        <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm hover:border-indigo-500/50 transition-all">
-          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Health score</span>
-          <span className="text-lg font-mono font-bold text-indigo-600 dark:text-indigo-400 mt-1 block">
+        <div className="min-w-0 overflow-hidden p-3 sm:p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm hover:border-indigo-500/50 transition-all">
+          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block leading-tight">Health score</span>
+          <span className="text-sm sm:text-base xl:text-lg font-mono font-bold text-indigo-600 dark:text-indigo-400 mt-1 block truncate tabular-nums">
             {pkgData.health.score} <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-sans">/ 100</span>
           </span>
         </div>
 
         {/* KPI: GitHub Stars */}
-        <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm hover:border-indigo-500/50 transition-all">
-          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">GitHub Stars</span>
-          <span className="text-lg font-mono font-bold text-zinc-900 dark:text-white mt-1 block">
+        <div className="min-w-0 overflow-hidden p-3 sm:p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm hover:border-indigo-500/50 transition-all">
+          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block leading-tight">GitHub Stars</span>
+          <span className="text-sm sm:text-base xl:text-lg font-mono font-bold text-zinc-900 dark:text-white mt-1 block truncate tabular-nums" title={pkgData.github ? pkgData.github.stars.toLocaleString() : 'N/A'}>
             {pkgData.github ? pkgData.github.stars.toLocaleString() : 'N/A'}
           </span>
         </div>
 
         {/* KPI: Total Versions */}
-        <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm hover:border-indigo-500/50 transition-all">
-          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Total versions</span>
-          <span className="text-lg font-mono font-bold text-zinc-900 dark:text-white mt-1 block">
+        <div className="min-w-0 overflow-hidden p-3 sm:p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm hover:border-indigo-500/50 transition-all">
+          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block leading-tight">Total versions</span>
+          <span className="text-sm sm:text-base xl:text-lg font-mono font-bold text-zinc-900 dark:text-white mt-1 block truncate tabular-nums">
             {pkgData.totalVersions}
           </span>
         </div>
 
         {/* KPI: Last Release Date */}
-        <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm col-span-1 hover:border-indigo-500/50 transition-all">
-          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Last release</span>
-          <span className="text-xs font-mono font-semibold text-zinc-800 dark:text-zinc-200 mt-2.5 block truncate">
+        <div className="min-w-0 overflow-hidden p-3 sm:p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 backdrop-blur-sm shadow-sm hover:border-indigo-500/50 transition-all">
+          <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block leading-tight">Last release</span>
+          <span className="text-xs font-mono font-semibold text-zinc-800 dark:text-zinc-200 mt-1.5 block truncate tabular-nums">
             {pkgData.lastUpdated ? pkgData.lastUpdated.split('T')[0] : 'N/A'}
           </span>
         </div>
@@ -677,26 +677,26 @@ export default function DashboardOverview({
             </div>
 
             {/* Quick range statistics summary banner */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-4 border-t border-zinc-100 dark:border-zinc-900 text-xs">
-              <div>
-                <span className="text-zinc-400 dark:text-zinc-500 block">Total in Range</span>
-                <span className="font-mono font-bold text-zinc-900 dark:text-white mt-0.5 block">{rangeMetrics.total.toLocaleString()}</span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6 pt-4 border-t border-zinc-100 dark:border-zinc-900 text-xs">
+              <div className="min-w-0">
+                <span className="text-zinc-400 dark:text-zinc-500 block leading-tight">Total in Range</span>
+                <span className="font-mono font-bold text-zinc-900 dark:text-white mt-0.5 block truncate tabular-nums" title={rangeMetrics.total.toLocaleString()}>{rangeMetrics.total.toLocaleString()}</span>
               </div>
-              <div>
-                <span className="text-zinc-400 dark:text-zinc-500 block">Peak Downloads</span>
-                <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 block" title={`Peak day: ${rangeMetrics.peak.day}`}>
+              <div className="min-w-0">
+                <span className="text-zinc-400 dark:text-zinc-500 block leading-tight">Peak Downloads</span>
+                <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 block truncate tabular-nums" title={`Peak day: ${rangeMetrics.peak.day}`}>
                   {rangeMetrics.peak.downloads.toLocaleString()}
                 </span>
               </div>
-              <div>
-                <span className="text-zinc-400 dark:text-zinc-500 block">Lowest Day</span>
-                <span className="font-mono font-bold text-rose-500 mt-0.5 block" title={`Lowest day: ${rangeMetrics.lowest.day}`}>
+              <div className="min-w-0">
+                <span className="text-zinc-400 dark:text-zinc-500 block leading-tight">Lowest Day</span>
+                <span className="font-mono font-bold text-rose-500 mt-0.5 block truncate tabular-nums" title={`Lowest day: ${rangeMetrics.lowest.day}`}>
                   {rangeMetrics.lowest.downloads.toLocaleString()}
                 </span>
               </div>
-              <div>
-                <span className="text-zinc-400 dark:text-zinc-500 block">Daily Average</span>
-                <span className="font-mono font-bold text-zinc-900 dark:text-white mt-0.5 block">{rangeMetrics.average.toLocaleString()}</span>
+              <div className="min-w-0">
+                <span className="text-zinc-400 dark:text-zinc-500 block leading-tight">Daily Average</span>
+                <span className="font-mono font-bold text-zinc-900 dark:text-white mt-0.5 block truncate tabular-nums" title={rangeMetrics.average.toLocaleString()}>{rangeMetrics.average.toLocaleString()}</span>
               </div>
             </div>
 
@@ -725,9 +725,9 @@ export default function DashboardOverview({
               <div className="space-y-3.5">
                 {Object.entries(pkgData.health.metrics).map(([key, metric]: [string, any]) => (
                   <div key={key} className="space-y-1.5 text-xs">
-                    <div className="flex justify-between items-center text-[11px] font-semibold">
-                      <span className="text-zinc-500 dark:text-zinc-400">{metric.label}</span>
-                      <span className="text-zinc-800 dark:text-zinc-200">{typeof metric.value === 'boolean' ? (metric.value ? 'Fully supported' : 'Fallback') : metric.value}</span>
+                    <div className="flex justify-between items-center gap-2 text-[11px] font-semibold min-w-0">
+                      <span className="text-zinc-500 dark:text-zinc-400 shrink-0">{metric.label}</span>
+                      <span className="text-zinc-800 dark:text-zinc-200 truncate text-right">{typeof metric.value === 'boolean' ? (metric.value ? 'Fully supported' : 'Fallback') : metric.value}</span>
                     </div>
                     <div className="w-full bg-zinc-100 dark:bg-zinc-900 h-2 rounded-full overflow-hidden">
                       <div 
@@ -763,17 +763,17 @@ export default function DashboardOverview({
                 </div>
 
                 <div className="grid grid-cols-2 gap-3.5 text-xs">
-                  <div className="bg-zinc-50 dark:bg-zinc-900/40 p-2 rounded-lg border border-zinc-200/40 dark:border-zinc-800/40">
-                    <span className="text-zinc-400 dark:text-zinc-500 block">Watchers</span>
-                    <span className="font-mono font-bold text-zinc-900 dark:text-white mt-0.5 block">{pkgData.github.watchers.toLocaleString()}</span>
+                  <div className="min-w-0 overflow-hidden bg-zinc-50 dark:bg-zinc-900/40 p-2 rounded-lg border border-zinc-200/40 dark:border-zinc-800/40">
+                    <span className="text-zinc-400 dark:text-zinc-500 block leading-tight">Watchers</span>
+                    <span className="font-mono font-bold text-zinc-900 dark:text-white mt-0.5 block truncate tabular-nums">{pkgData.github.watchers.toLocaleString()}</span>
                   </div>
-                  <div className="bg-zinc-50 dark:bg-zinc-900/40 p-2 rounded-lg border border-zinc-200/40 dark:border-zinc-800/40">
-                    <span className="text-zinc-400 dark:text-zinc-500 block">Forks</span>
-                    <span className="font-mono font-bold text-zinc-900 dark:text-white mt-0.5 block">{pkgData.github.forks.toLocaleString()}</span>
+                  <div className="min-w-0 overflow-hidden bg-zinc-50 dark:bg-zinc-900/40 p-2 rounded-lg border border-zinc-200/40 dark:border-zinc-800/40">
+                    <span className="text-zinc-400 dark:text-zinc-500 block leading-tight">Forks</span>
+                    <span className="font-mono font-bold text-zinc-900 dark:text-white mt-0.5 block truncate tabular-nums">{pkgData.github.forks.toLocaleString()}</span>
                   </div>
-                  <div className="bg-zinc-50 dark:bg-zinc-900/40 p-2 rounded-lg border border-zinc-200/40 dark:border-zinc-800/40 col-span-2">
-                    <span className="text-zinc-400 dark:text-zinc-500 block">Size & Default Branch</span>
-                    <span className="font-mono font-semibold text-zinc-800 dark:text-zinc-200 mt-1 block">
+                  <div className="min-w-0 overflow-hidden bg-zinc-50 dark:bg-zinc-900/40 p-2 rounded-lg border border-zinc-200/40 dark:border-zinc-800/40 col-span-2">
+                    <span className="text-zinc-400 dark:text-zinc-500 block leading-tight">Size & Default Branch</span>
+                    <span className="font-mono font-semibold text-zinc-800 dark:text-zinc-200 mt-1 block truncate">
                       {Math.round(pkgData.github.size / 1024)} MB on branch <span className="text-indigo-500">"{pkgData.github.defaultBranch}"</span>
                     </span>
                   </div>
